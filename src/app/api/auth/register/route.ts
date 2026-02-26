@@ -6,6 +6,7 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 
 const FLW_SECRET_KEY = process.env.FLW_SECRET_KEY || '';

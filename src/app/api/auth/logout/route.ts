@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { hashToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 
 export async function POST(request: NextRequest) {

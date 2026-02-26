@@ -10,6 +10,7 @@ import { sendDataPurchaseNotification } from '@/lib/notify';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 
 const purchaseSchema = z.object({

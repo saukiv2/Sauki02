@@ -6,6 +6,7 @@ import { validateCustomer, sendBillPaymentAdvice, parseDisco } from '@/lib/inter
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 
 const paySchema = z.object({

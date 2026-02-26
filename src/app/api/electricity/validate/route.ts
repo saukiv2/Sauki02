@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { validateCustomer, parseDisco } from '@/lib/interswitch';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 
 const validateSchema = z.object({
