@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -8,15 +9,12 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user ID from middleware-injected header
-    const userId = request.headers.get('x-user-id');
-
-    if (!userId) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Verify authentication
+    const userIdOrResponse = requireAuth(request);
+    if (userIdOrResponse instanceof NextResponse) {
+      return userIdOrResponse;
     }
+    const userId = userIdOrResponse;
 
     // Get pagination parameters
     const searchParams = request.nextUrl.searchParams;
@@ -63,7 +61,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        transactions: transactions.map((tx) => ({
+        success: true,
+        data: transactions.map((tx) => ({
           ...tx,
           amountNaira: tx.amountKobo / 100,
           balanceBeforeNaira: tx.balanceBefore / 100,
