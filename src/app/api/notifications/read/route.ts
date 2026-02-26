@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
+
 
 const markReadSchema = z.object({
   notificationIds: z.array(z.string()).optional(),

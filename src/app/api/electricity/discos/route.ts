@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getAllDiscos } from '@/lib/interswitch';
+
 
 /**
  * GET /api/electricity/discos

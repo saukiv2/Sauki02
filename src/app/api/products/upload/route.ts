@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+
 
 const uploadDir = join(process.cwd(), 'public', 'uploads', 'products');
 

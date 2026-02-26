@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 import { sendElectricityNotification } from '@/lib/notify';
 import { validateCustomer, sendBillPaymentAdvice, parseDisco } from '@/lib/interswitch';
 import { z } from 'zod';
+
 
 const paySchema = z.object({
   disco: z.string().min(1, 'DisCo required'),

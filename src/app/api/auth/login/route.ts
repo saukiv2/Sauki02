@@ -4,6 +4,8 @@ import { verifyPassword, generateAccessToken, generateRefreshToken, hashToken } 
 import { prisma } from '@/lib/db';
 import { checkRateLimit } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Get client IP for rate limiting

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -8,6 +10,7 @@ import {
 } from '@/lib/amigo';
 import { sendDataPurchaseNotification } from '@/lib/notify';
 import { z } from 'zod';
+
 
 const purchaseSchema = z.object({
   planId: z.string().min(1, 'Plan ID required'),
