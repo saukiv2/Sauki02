@@ -4,8 +4,10 @@ import { verifyPassword, generateAccessToken, generateRefreshToken, hashToken } 
 import { prisma } from '@/lib/db';
 import { checkRateLimit } from '@/lib/rate-limit';
 
+// Route configuration
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 
 export async function POST(request: NextRequest) {

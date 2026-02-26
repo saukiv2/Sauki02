@@ -43,11 +43,13 @@ export function checkRateLimit(
 /**
  * Cleanup old entries every hour
  */
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store.entries()) {
-    if (entry.resetTime < now) {
-      store.delete(key);
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of store.entries()) {
+      if (entry.resetTime < now) {
+        store.delete(key);
+      }
     }
-  }
-}, 60 * 60 * 1000);
+  }, 60 * 60 * 1000);
+}

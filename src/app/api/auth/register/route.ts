@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 
 const FLW_SECRET_KEY = process.env.FLW_SECRET_KEY || '';
