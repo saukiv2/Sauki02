@@ -5,12 +5,18 @@ import { verifyAccessToken } from './lib/auth';
 export const middleware: NextMiddleware = (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
-  // Public routes
+  // Public routes (no middleware check needed)
   const publicRoutes = [
     /^\/api\/auth\//,
+    /^\/api\/contact\//,
     /^\/api\/wallet\/webhook$/,
     /^\/landing\//,
+    /^\/privacy$/,
+    /^\/terms$/,
+    /^\/contact$/,
     /^\/$/, // home
+    /^\/app-entry$/,
+    /^\/auth\//,
   ];
 
   const isPublic = publicRoutes.some(route => route.test(pathname));
@@ -31,45 +37,54 @@ export const middleware: NextMiddleware = (request: NextRequest) => {
   }
 
   // Verify token
-  const payload = verifyAccessToken(token);
+  try {
+    const payload = verifyAccessToken(token);
 
-  if (!payload) {
+    if (!payload) {
+      return NextResponse.json(
+        { message: 'Unauthorized: Invalid or expired token' },
+        { status: 401 }
+      );
+    }
+
+    // Admin-only routes
+    if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+      if (payload.role !== 'ADMIN') {
+        return NextResponse.json(
+          { message: 'Forbidden: Admin access required' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Create response with injected headers
+    const response = NextResponse.next();
+    response.headers.set('x-user-id', payload.userId);
+    response.headers.set('x-user-role', payload.role);
+    response.headers.set('x-user-email', payload.email);
+
+    return response;
+  } catch (error) {
+    console.error('Middleware error:', error);
     return NextResponse.json(
-      { message: 'Unauthorized: Invalid or expired token' },
+      { message: 'Unauthorized: Invalid token' },
       { status: 401 }
     );
   }
-
-  // Admin-only routes
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    if (payload.role !== 'ADMIN') {
-      return NextResponse.json(
-        { message: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
-    }
-  }
-
-  // Protected wallet routes (customer can only access own wallet)
-  if (pathname.startsWith('/api/wallet/') && !pathname.endsWith('/webhook')) {
-    // The actual route handler will validate wallet ownership
-  }
-
-  // Create response with injected headers
-  const response = NextResponse.next();
-  response.headers.set('x-user-id', payload.userId);
-  response.headers.set('x-user-role', payload.role);
-  response.headers.set('x-user-email', payload.email);
-
-  return response;
 };
 
 export const config = {
   matcher: [
-    // Protect all API routes except public ones
+    // Apply middleware to API routes
     '/api/:path*',
-    // Protect app routes
+    // Apply middleware to protected app routes (but not home, landing, etc)
     '/admin/:path*',
     '/(app)/:path*',
+    '/dashboard/:path*',
+    '/store/:path*',
+    '/wallet/:path*',
+    '/profile/:path*',
+    '/data/:path*',
+    '/electricity/:path*',
   ],
 };
