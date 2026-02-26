@@ -16,7 +16,7 @@ DATABASE_URL=postgresql://user:password@host:port/saukimart
 JWT_SECRET=your_jwt_secret_key
 NEXT_PUBLIC_APP_URL=https://saukimart.online
 
-# Firebase (Admin)
+# Firebase (Admin SDK)
 FIREBASE_PROJECT_ID=your_project_id
 FIREBASE_PRIVATE_KEY=your_private_key
 FIREBASE_CLIENT_EMAIL=your_client_email
@@ -24,12 +24,11 @@ FIREBASE_CLIENT_EMAIL=your_client_email
 # Payment Integrations
 FLUTTERWAVE_SECRET_KEY=your_flutterwave_key
 INTERSWITCH_AUTH_STRING=your_interswitch_auth
-AMIGO_USERNAME=your_amigo_username
-AMIGO_PASSWORD=your_amigo_password
-AMIGO_PUBLIC_KEY=your_amigo_public_key
+AMIGO_API_TOKEN=your_amigo_api_token
+AMIGO_PROXY_URL=your_aws_proxy_url
 
-# Notifications
-PUSHWOOSH_APP_CODE=your_pushwoosh_code
+# Notifications (Firebase Cloud Messaging - uses Firebase config above)
+# No additional setup needed
 ```
 
 ## Contact & Support

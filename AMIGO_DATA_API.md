@@ -8,11 +8,8 @@ Add to `.env.local`:
 
 ```env
 # Amigo API credentials
-AMIGO_TOKEN=your-api-key
-AWS_PROXY_URL=https://your-proxy.com/api/data
-
-# Alternative: For custom data providers
-CUSTOM_DATA_API_TOKEN=optional-custom-api-key
+AMIGO_API_TOKEN=your-api-token-from-amigo-dashboard
+AMIGO_PROXY_URL=https://your-aws-proxy.com/api/data
 ```
 
 ---

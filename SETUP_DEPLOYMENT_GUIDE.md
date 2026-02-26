@@ -145,14 +145,11 @@ JWT_EXPIRY=3600                           # Access token expiry in seconds (1 ho
 JWT_REFRESH_EXPIRY=604800                 # Refresh token expiry in seconds (7 days)
 
 # ============================================================================
-# FIREBASE ADMIN SDK (for notifications & webhooks)
+# FIREBASE ADMIN SDK (for Cloud Messaging & authentication)
 # ============================================================================
 FIREBASE_PROJECT_ID=your_project_id
 FIREBASE_PRIVATE_KEY=your_private_key      # Replace \n with actual newlines
 FIREBASE_CLIENT_EMAIL=your_client_email@project.iam.gserviceaccount.com
-FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
-FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 
 # ============================================================================
 # PAYMENT INTEGRATIONS
@@ -168,17 +165,14 @@ INTERSWITCH_CLIENT_ID=your_client_id
 INTERSWITCH_CLIENT_SECRET=your_client_secret
 INTERSWITCH_AUTH_STRING=your_auth_string_base64_encoded
 
-# Amigo API
-AMIGO_BASEURL=https://api.amigo.io
-AMIGO_USERNAME=your_username
-AMIGO_PASSWORD=your_password
-AMIGO_PUBLIC_KEY=your_public_key
+# Amigo API (Data Vending)
+AMIGO_API_TOKEN=your_api_token              # Get from Amigo dashboard
+AMIGO_PROXY_URL=https://your-proxy-url/path # AWS proxy for routing requests
 
 # ============================================================================
-# NOTIFICATIONS (Push Notifications)
+# NOTIFICATIONS (Firebase Cloud Messaging)
 # ============================================================================
-PUSHWOOSH_APP_CODE=your_app_code
-PUSHWOOSH_API_KEY=your_api_key
+# Uses Firebase project configured above - no additional setup needed
 
 # ============================================================================
 # OPTIONAL FEATURES
@@ -186,11 +180,6 @@ PUSHWOOSH_API_KEY=your_api_key
 ENABLE_RATE_LIMITING=true
 RATE_LIMIT_WINDOW_MS=900000              # 15 minutes
 RATE_LIMIT_MAX_REQUESTS=100              # requests per window
-
-# Email Service (if using SendGrid/Mailgun)
-SENDGRID_API_KEY=SG.xxxxxxxxxxxxx        # Optional
-MAILGUN_API_KEY=key-xxxxxxxxxxxxx        # Or use Mailgun
-MAILGUN_DOMAIN=mg.yourdomain.com
 
 # ============================================================================
 # LOGGING
@@ -221,11 +210,7 @@ LOG_LEVEL=info                           # debug, info, warn, error
    - `private_key` → FIREBASE_PRIVATE_KEY
    - `client_email` → FIREBASE_CLIENT_EMAIL
 
-#### Enable Firestore Database
-1. In Firebase Console, navigate to **Firestore Database**
-2. Click "Create database"
-3. Select region and start in production mode
-4. Click "Create"
+**Note**: You don't need to create Firestore or additional databases. Firebase Cloud Messaging will handle notifications using just the Admin SDK credentials.
 
 ### 2. Flutterwave Setup
 
@@ -257,25 +242,38 @@ echo -n "CLIENT_ID:CLIENT_SECRET" | base64
 # Output: your_auth_string
 ```
 
-### 4. Amigo API Setup
+### 4. Amigo API (Data Vending) Setup
 
-1. Visit [Amigo Dashboard](https://www.amigo.io)
+#### Get API Token
+1. Visit [Amigo Dashboard](https://dashboard.amigo.io)
 2. Sign up or log in
 3. Navigate to **API Settings** or **Developer** section
-4. Generate API credentials:
-   - Username → AMIGO_USERNAME
-   - Password → AMIGO_PASSWORD
-   - Public Key → AMIGO_PUBLIC_KEY
+4. Copy your **API Token** → `AMIGO_API_TOKEN`
 
-### 5. Push Notifications (Pushwoosh)
+#### Configure Proxy URL
+1. Your AWS proxy is already configured
+2. Add the proxy URL to `.env.local`:
+   ```env
+   AMIGO_PROXY_URL=https://your-proxy-url/path
+   ```
 
-1. Visit [Pushwoosh](https://www.pushwoosh.com)
-2. Sign up or log in
-3. Create application for Android
-4. Go to **Settings**
-5. Copy:
-   - App Code → PUSHWOOSH_APP_CODE
-   - API Key → PUSHWOOSH_API_KEY
+#### How the Integration Works
+- SaukiMart sends requests to your AWS proxy
+- The proxy forwards requests to Amigo API with the API token header: `X-API-Key: <YOUR_API_TOKEN>`
+- Amigo processes the data vending request
+- Response is returned back through the proxy to SaukiMart
+
+**Example Request Structure**:
+```json
+{
+  "network": 1,                    // 1=MTN, 2=Glo, 4=Airtel
+  "mobile_number": "09012345678",
+  "plan": 1001,                    // Plan ID from Amigo catalog
+  "Ported_number": true
+}
+```
+
+See [Amigo API Documentation](https://amigo.ng/docs) for full plan catalog and details.
 
 ---
 

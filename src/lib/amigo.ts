@@ -36,8 +36,8 @@ const NETWORK_MAP: Record<string, 1 | 2 | 4> = {
   'AIRTEL': 4,
 };
 
-const AWS_PROXY_URL = process.env.AWS_PROXY_URL || 'https://proxy.example.com/api/data';
-const AMIGO_TOKEN = process.env.AMIGO_TOKEN || '';
+const AWS_PROXY_URL = process.env.AMIGO_PROXY_URL || 'https://proxy.example.com/api/data';
+const AMIGO_TOKEN = process.env.AMIGO_API_TOKEN || '';
 
 /**
  * Get network ID from network name
