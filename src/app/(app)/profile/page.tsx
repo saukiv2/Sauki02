@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/spinner';
 
 export default function ProfilePage() {
   const user = useUser();
-  const { get, patch } = useApi();
+  const { patch } = useApi();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
