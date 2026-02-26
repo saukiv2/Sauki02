@@ -7,6 +7,7 @@ import {
   formatPhoneNumber,
 } from '@/lib/amigo';
 import { sendDataPurchaseNotification } from '@/lib/notify';
+import { requireAuth } from '@/lib/api-auth';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -33,15 +34,12 @@ const purchaseSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get user from middleware header
-    const userId = request.headers.get('x-user-id');
-
-    if (!userId) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Verify authentication
+    const userIdOrResponse = requireAuth(request);
+    if (userIdOrResponse instanceof NextResponse) {
+      return userIdOrResponse;
     }
+    const userId = userIdOrResponse;
 
     // Parse request
     const body = await request.json();
@@ -84,9 +82,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user role for pricing
-    const userRole = request.headers.get('x-user-role') || 'CUSTOMER';
     const priceKobo =
-      userRole === 'AGENT' ? plan.agentPriceKobo : plan.customerPriceKobo;
+      user.role === 'AGENT' ? plan.agentPriceKobo : plan.customerPriceKobo;
 
     // Check wallet balance
     if (user.wallet.balanceKobo < priceKobo) {
