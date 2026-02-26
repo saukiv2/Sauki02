@@ -1,6 +1,6 @@
 'use client';
 
-export default function Custom-apisPage() {
+export default function CustomApisPage() {
   return (
     <div className="space-y-6">
       <div>

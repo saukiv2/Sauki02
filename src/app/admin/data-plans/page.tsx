@@ -1,6 +1,6 @@
 'use client';
 
-export default function Data-plansPage() {
+export default function DataPlansPage() {
   return (
     <div className="space-y-6">
       <div>
