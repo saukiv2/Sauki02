@@ -1,0 +1,13 @@
+{
+  "name": "SaukiMart",
+  "short_name": "SaukiMart",
+  "description": "Buy data, pay electricity bills & shop for gadgets",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0A7AFF",
+  "icons": [
+    { "src": "/icons/icon_192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon_512x512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

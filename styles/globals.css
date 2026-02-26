@@ -1,0 +1,38 @@
+/* Global styles for SaukiMart */
+
+:root {
+  --color-black: #1C1C1E;
+  --color-white: #F5F5F7;
+  --color-brand-blue: #0A7AFF;
+  --font-inter: 'Inter', sans-serif;
+  --font-playfair: 'Playfair Display', serif;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-inter);
+  background-color: var(--color-white);
+  color: var(--color-black);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-playfair);
+  margin: 0;
+}
+
+/* Utility classes for spacing, etc. */
+
+.container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}

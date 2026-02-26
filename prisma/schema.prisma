@@ -1,0 +1,385 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Role {
+  CUSTOMER
+  AGENT
+  ADMIN
+}
+
+enum WalletTxType {
+  CREDIT
+  DEBIT
+  TRANSFER_IN
+  TRANSFER_OUT
+  REFUND
+}
+
+enum TxStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+// ============================================================================
+// MODELS
+// ============================================================================
+
+model User {
+  id                        String @id @default(cuid())
+  fullName                  String
+  email                     String @unique
+  phone                     String @unique
+  passwordHash              String
+  role                      Role @default(CUSTOMER)
+  isVerified                Boolean @default(false)
+  isSuspended               Boolean @default(false)
+  agentApplicationPending   Boolean @default(false)
+  flwIdentityRef            String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  // Relations
+  sessions                  Session[]
+  wallet                    Wallet?
+  dataPurchases             DataPurchase[]
+  electricityPurchases      ElectricityPurchase[]
+  orders                    Order[]
+  notifications             Notification[]
+  pushTokens                PushToken[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+model Session {
+  id                String @id @default(cuid())
+  userId            String
+  tokenHash         String
+  deviceInfo        String?
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Wallet {
+  id                String @id @default(cuid())
+  userId            String @unique
+  balanceKobo       Int @default(0)
+  currency          String @default("NGN")
+  flwAccountNumber  String?
+  flwBankName       String?
+  flwOrderRef       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      WalletTransaction[]
+  sentTransfers     WalletTransfer[] @relation("senderWallet")
+  receivedTransfers WalletTransfer[] @relation("recipientWallet")
+  flutterwaveDeposits FlutterwaveDeposit[]
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id                String @id @default(cuid())
+  walletId          String
+  type              WalletTxType
+  amountKobo        Int
+  balanceBefore     Int
+  balanceAfter      Int
+  ref               String @unique
+  description       String
+  metadata          Json?
+  status            TxStatus @default(SUCCESS)
+  createdAt         DateTime @default(now())
+
+  // Relations
+  wallet            Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+  @@index([status])
+  @@index([ref])
+}
+
+model WalletTransfer {
+  id                String @id @default(cuid())
+  senderWalletId    String
+  recipientWalletId String
+  amountKobo        Int
+  note              String?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  senderWallet      Wallet @relation("senderWallet", fields: [senderWalletId], references: [id], onDelete: Cascade)
+  recipientWallet   Wallet @relation("recipientWallet", fields: [recipientWalletId], references: [id], onDelete: Cascade)
+
+  @@index([senderWalletId])
+  @@index([recipientWalletId])
+}
+
+model FlutterwaveDeposit {
+  id                String @id @default(cuid())
+  walletId          String
+  flwRef            String @unique
+  flwTxId           String
+  amountKobo        Int
+  originatorName    String?
+  originatorAccount String?
+  bankName          String?
+  status            TxStatus @default(PENDING)
+  webhookReceivedAt DateTime?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  wallet            Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([status])
+}
+
+model CustomDataApi {
+  id                      String @id @default(cuid())
+  name                    String
+  baseUrl                 String
+  authHeader              String
+  requestBodyTemplate     String
+  isActive                Boolean @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  dataPlans               DataPlan[]
+
+  @@index([isActive])
+}
+
+model DataPlan {
+  id                String @id @default(cuid())
+  name              String
+  network           String
+  size              String
+  validity          Int
+  dataType          String @default("SME")
+  apiProvider       String @default("AMIGO")
+  amigoNetworkId    Int?
+  amigoPlanId       Int?
+  customApiId       String?
+  customApiCode     String?
+  customerPriceKobo Int
+  agentPriceKobo    Int
+  costPriceKobo     Int
+  isActive          Boolean @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  customApi         CustomDataApi? @relation(fields: [customApiId], references: [id], onDelete: SetNull)
+  dataPurchases     DataPurchase[]
+
+  @@index([network])
+  @@index([isActive])
+  @@index([apiProvider])
+}
+
+model DataPurchase {
+  id                String @id @default(cuid())
+  userId            String
+  planId            String
+  phoneNumber       String
+  amountKobo        Int
+  apiProvider       String
+  providerResponse  Json?
+  amigoReference    String?
+  status            TxStatus @default(PENDING)
+  walletTxId        String?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan              DataPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([phoneNumber])
+}
+
+model ElectricityPurchase {
+  id                String @id @default(cuid())
+  userId            String
+  disco             String
+  iswBillerId       Int
+  iswPaymentCode    String
+  meterNo           String
+  customerName      String
+  amountKobo        Int
+  serviceChargeKobo Int
+  units             String?
+  token             String?
+  iswRequestRef     String?
+  iswResponseCode   String?
+  status            TxStatus @default(PENDING)
+  walletTxId        String?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([meterNo])
+}
+
+model Category {
+  id                String @id @default(cuid())
+  name              String
+  icon              String?
+  displayOrder      Int @default(0)
+
+  // Relations
+  products          Product[]
+
+  @@index([displayOrder])
+}
+
+model Product {
+  id                String @id @default(cuid())
+  name              String
+  categoryId        String
+  description       String
+  specs             Json?
+  images            String[]
+  customerPriceKobo Int
+  agentPriceKobo    Int
+  stockQty          Int @default(0)
+  isActive          Boolean @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems        OrderItem[]
+
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model Order {
+  id                String @id @default(cuid())
+  userId            String
+  status            OrderStatus @default(PENDING)
+  totalKobo         Int
+  deliveryAddress   Json
+  walletTxId        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items             OrderItem[]
+
+  @@index([userId, status])
+  @@index([status])
+}
+
+model OrderItem {
+  id                String @id @default(cuid())
+  orderId           String
+  productId         String
+  qty               Int
+  unitPriceKobo     Int
+  subtotalKobo      Int
+
+  // Relations
+  order             Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Notification {
+  id                String @id @default(cuid())
+  userId            String?
+  type              String
+  title             String
+  body              String
+  dataPayload       Json?
+  isRead            Boolean @default(false)
+  sentAt            DateTime @default(now())
+
+  // Relations
+  user              User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([sentAt])
+}
+
+model PushToken {
+  id                String @id @default(cuid())
+  userId            String
+  fcmToken          String
+  platform          String @default("android")
+  lastSeen          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fcmToken])
+  @@index([userId])
+}
+
+model PlatformSetting {
+  id                String @id @default(cuid())
+  key               String @unique
+  value             String
+  updatedAt         DateTime @updatedAt
+
+  @@index([key])
+}
+
+model AuditLog {
+  id                String @id @default(cuid())
+  adminId           String // Reference to User.id, but not a FK to allow flexibility
+  action            String
+  targetType        String?
+  targetId          String?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@index([targetType])
+}

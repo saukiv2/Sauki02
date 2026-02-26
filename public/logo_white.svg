@@ -1,0 +1,13 @@
+<svg viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- Logo background (transparent, for dark backgrounds) -->
+  
+  <!-- Logo text (white) -->
+  <text x="50" y="28" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="white" letter-spacing="-0.5">
+    SaukiMart
+  </text>
+  
+  <!-- Logo icon (S shape) -->
+  <circle cx="20" cy="20" r="12" fill="white" opacity="0.3"/>
+  <path d="M 18 16 Q 18 14 20 14 Q 22 14 22 16 Q 22 18 20 18 Q 18 18 18 20 Q 18 22 20 22 Q 22 22 22 24 Q 22 26 20 26 Q 18 26 18 24" 
+        stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>
