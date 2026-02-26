@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAllDiscos } from '@/lib/interswitch';
 
 export const dynamic = 'force-dynamic';
-import { getAllDiscos } from '@/lib/interswitch';
 
 
 /**

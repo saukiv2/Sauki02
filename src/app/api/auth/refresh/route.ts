@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-export const dynamic = 'force-dynamic';
 import { verifyRefreshToken, generateAccessToken, hashToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 
 export async function POST(request: NextRequest) {

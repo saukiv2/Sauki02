@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
 import { sendWalletCreditNotification } from '@/lib/notify';
 import crypto from 'crypto';
+
+export const dynamic = 'force-dynamic';
 
 
 const FLW_WEBHOOK_HASH = process.env.FLW_WEBHOOK_HASH || '';

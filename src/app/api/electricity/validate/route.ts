@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-export const dynamic = 'force-dynamic';
 import { z } from 'zod';
 import { validateCustomer, parseDisco } from '@/lib/interswitch';
+
+export const dynamic = 'force-dynamic';
 
 
 const validateSchema = z.object({
