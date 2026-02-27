@@ -12,6 +12,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (user: Partial<User>) => void;
   checkAuth: () => Promise<void>;
+  refreshToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,44 +24,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   const checkAuth = useCallback(async () => {
-    console.log('[Auth] checkAuth started');
     try {
-      // Use a longer timeout to allow time for re-renders
-      await new Promise(resolve => setTimeout(resolve, 100));
-
       const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      
-      console.log('[Auth] Token exists:', !!token);
-      console.log('[Auth] Stored user exists:', !!storedUserStr);
 
       if (!token) {
-        console.log('[Auth] No token found - user not logged in');
         setUser(null);
       } else if (storedUserStr) {
         try {
           const parsedUser = JSON.parse(storedUserStr);
-          console.log('[Auth] Successfully parsed user from localStorage:', parsedUser.id);
           setUser(parsedUser);
         } catch (e) {
-          console.error('[Auth] Failed to parse stored user:', e);
           setUser(null);
         }
       } else {
-        console.log('[Auth] Token exists but no stored user found');
         setUser(null);
       }
     } catch (error) {
-      console.error('[Auth] Auth check failed:', error);
       setUser(null);
     } finally {
-      console.log('[Auth] checkAuth completed');
       setIsLoading(false);
       setHasCheckedAuth(true);
     }
   }, []);
 
-  // Check auth on mount
+  const refreshToken = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refreshToken: localStorage.getItem('refreshToken'),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to refresh token');
+      }
+
+      const data = await response.json();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('accessToken', data.accessToken);
+      }
+    } catch (error) {
+      // Don't call logout here - it causes circular dependency
+      // Just clear localStorage and let the auth check handle it
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+      }
+      setUser(null);
+      setHasCheckedAuth(false);
+    }
+  }, []);
+
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -80,35 +98,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      console.log('[Auth] Login response - user:', data.user?.id);
-
-      // Store token and user BEFORE setting state
+      
       if (typeof window !== 'undefined') {
         localStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('refreshToken', data.refreshToken);
         if (data.user) {
           localStorage.setItem('user', JSON.stringify(data.user));
-          console.log('[Auth] User stored in localStorage');
         }
       }
 
-      // Set user data immediately
       setUser(data.user);
-      setIsLoading(false);
       setHasCheckedAuth(true);
 
-      // Small delay to ensure state is committed before navigation
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Redirect based on role
       if (data.user?.role === 'ADMIN') {
         router.push('/admin');
       } else {
         router.push('/dashboard');
       }
     } catch (error) {
-      console.error('[Auth] Login error:', error);
       setIsLoading(false);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   }, [router]);
 
@@ -128,8 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('user');
       }
       setUser(null);
-      setIsLoading(false);
       setHasCheckedAuth(false);
+      setIsLoading(false);
       router.push('/auth/login');
     }
   }, [router]);
@@ -153,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     updateUser,
     checkAuth,
+    refreshToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

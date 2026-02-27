@@ -25,52 +25,22 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { logout, checkAuth } = useAuthMethods();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Re-check auth when app-layout mounts (e.g., after login redirect)
+  // Restore auth state when app-layout mounts
   useEffect(() => {
-    console.log('[AppLayout] Mounted - rechecking auth');
     checkAuth();
   }, [checkAuth]);
 
-  // Redirect if not authenticated after initial check completes
+  // Redirect if not authenticated
   useEffect(() => {
-    if (isLoading) {
-      console.log('[AppLayout] Still loading auth...');
-      return; // Wait for auth check to complete
-    }
-
-    // Get token from localStorage to determine if we should wait or redirect
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-
-    if (!isAuthenticated) {
-      if (token) {
-        // Token exists but user not yet loaded - this shouldn't happen, but wait a bit
-        console.log('[AppLayout] Token exists but not authenticated yet - waiting...');
-        setTimeout(() => {
-          if (!isAuthenticated) {
-            console.log('[AppLayout] Timeout: still not authenticated, redirecting to login');
-            router.push('/auth/login');
-          }
-        }, 1000);
-        return;
+    if (!isLoading && !isAuthenticated) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      if (!token) {
+        router.push('/auth/login');
       }
-
-      // No token and not authenticated - redirect to login
-      console.log('[AppLayout] No token and not authenticated - redirecting to login');
-      router.push('/auth/login');
-    } else {
-      console.log('[AppLayout] Authenticated - allowing access');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Spinner />
