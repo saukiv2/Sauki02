@@ -2,18 +2,18 @@
 // It checks if user is logged in and redirects accordingly
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { verifyRefreshToken } from '@/lib/auth'
 
 export default async function AppEntry() {
+  // Check if refresh token exists
   const cookieStore = cookies()
   const refreshToken = cookieStore.get('sm_refresh')?.value
 
+  // For now, just check if token exists (DB verification happens at API level)
   if (refreshToken) {
-    const payload = verifyRefreshToken(refreshToken)
-    if (payload) {
-       redirect('/dashboard')  // already logged in → go to app
-    }
+    // Token exists, user is logged in
+    redirect('/dashboard')
   }
 
-  redirect('/login')  // not logged in → go to login
+  // No token, not logged in
+  redirect('/auth/login')
 }
