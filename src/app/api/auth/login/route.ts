@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('sm_access', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: 'lax',
       maxAge: 60 * 60,
       path: '/',
     });
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('sm_refresh', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60,
       path: '/',
     });

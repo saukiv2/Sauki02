@@ -42,8 +42,11 @@ export async function middleware(request: NextRequest) {
       // Get access token from HTTP-only cookie
       const accessToken = request.cookies.get('sm_access')?.value;
 
+      console.log(`[Middleware] Checking auth for ${pathname}`);
+      console.log(`[Middleware] Access token present: ${!!accessToken}`);
+      
       if (!accessToken) {
-        console.log('[Middleware] Missing auth token for', pathname);
+        console.log(`[Middleware] ✗ Missing auth token for ${pathname}`);
         return NextResponse.json(
           { message: 'Missing authentication token' },
           { status: 401 }
@@ -53,12 +56,14 @@ export async function middleware(request: NextRequest) {
       const payload = verifyAuth(accessToken);
 
       if (!payload || !payload.userId) {
-        console.log('[Middleware] Invalid token for', pathname);
+        console.log(`[Middleware] ✗ Invalid token for ${pathname}`);
         return NextResponse.json(
           { message: 'Invalid or expired token' },
           { status: 401 }
         );
       }
+
+      console.log(`[Middleware] ✓ Token valid for user ${payload.userId} accessing ${pathname}`);
 
       // Clone request and add user info to headers for downstream handlers
       const response = NextResponse.next();
@@ -68,7 +73,7 @@ export async function middleware(request: NextRequest) {
 
       return response;
     } catch (error) {
-      console.error('[Middleware] Auth validation error:', error);
+      console.error(`[Middleware] Auth validation error for ${pathname}:`, error);
       return NextResponse.json(
         { message: 'Authentication failed' },
         { status: 401 }
