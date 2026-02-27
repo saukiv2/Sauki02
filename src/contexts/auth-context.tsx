@@ -23,31 +23,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   const checkAuth = useCallback(async () => {
+    console.log('[Auth] checkAuth started');
     try {
+      // Use a longer timeout to allow time for re-renders
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       
-      console.log('[Auth] Checking auth - token:', !!token, 'storedUser:', !!storedUserStr);
+      console.log('[Auth] Token exists:', !!token);
+      console.log('[Auth] Stored user exists:', !!storedUserStr);
 
       if (!token) {
+        console.log('[Auth] No token found - user not logged in');
         setUser(null);
       } else if (storedUserStr) {
         try {
           const parsedUser = JSON.parse(storedUserStr);
+          console.log('[Auth] Successfully parsed user from localStorage:', parsedUser.id);
           setUser(parsedUser);
-          console.log('[Auth] User restored from localStorage:', parsedUser.id);
         } catch (e) {
           console.error('[Auth] Failed to parse stored user:', e);
           setUser(null);
         }
       } else {
-        console.log('[Auth] No stored user, but token exists');
+        console.log('[Auth] Token exists but no stored user found');
         setUser(null);
       }
     } catch (error) {
       console.error('[Auth] Auth check failed:', error);
       setUser(null);
     } finally {
+      console.log('[Auth] checkAuth completed');
       setIsLoading(false);
       setHasCheckedAuth(true);
     }
