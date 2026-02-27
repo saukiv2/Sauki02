@@ -36,8 +36,11 @@ const NETWORK_MAP: Record<string, 1 | 2 | 4> = {
   'AIRTEL': 4,
 };
 
-const AWS_PROXY_URL = process.env.AMIGO_PROXY_URL || 'https://proxy.example.com/api/data';
-const AMIGO_TOKEN = process.env.AMIGO_API_TOKEN || '';
+// Defer config reading to runtime
+const getAmigoConfig = () => ({
+  proxyUrl: process.env.AMIGO_PROXY_URL || 'https://proxy.example.com/api/data',
+  apiToken: process.env.AMIGO_API_TOKEN || '',
+});
 
 /**
  * Get network ID from network name
@@ -57,6 +60,7 @@ export async function purchaseDataViaAmigo(
   planId: string | number,
   idempotencyKey: string
 ): Promise<AmigoResponse> {
+  const { proxyUrl, apiToken } = getAmigoConfig();
   const networkId = getNetworkId(network);
 
   const amigoRequest: AmigoRequest = {
@@ -74,11 +78,11 @@ export async function purchaseDataViaAmigo(
   };
 
   try {
-    const response = await fetch(AWS_PROXY_URL, {
+    const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': AMIGO_TOKEN,
+        'X-API-Key': apiToken,
       },
       body: JSON.stringify(proxyRequest),
     });

@@ -6,8 +6,6 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
 
-const FLW_WEBHOOK_HASH = process.env.FLW_WEBHOOK_HASH || '';
-
 /**
  * Flutterwave webhook for virtual account deposits
  * POST /api/wallet/webhook
@@ -19,6 +17,8 @@ export async function POST(request: NextRequest) {
   try {
     const { prisma } = await import('@/lib/db');
     const { sendWalletCreditNotification } = await import('@/lib/notify');
+    
+    const FLW_WEBHOOK_HASH = process.env.FLW_WEBHOOK_HASH || '';
     
     // Verify webhook signature
     const signature = request.headers.get('verif-hash');
