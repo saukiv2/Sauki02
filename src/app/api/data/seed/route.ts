@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,6 +13,8 @@ export const fetchCache = 'force-no-store';
  */
 export async function POST(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    
     // Only allow in development
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json(

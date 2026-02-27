@@ -1,27 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import sharp from 'sharp';
-import { v4 as uuidv4 } from 'uuid';
-import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-
-const uploadDir = join(process.cwd(), 'public', 'uploads', 'products');
-
-const productSchema = z.object({
-  name: z.string().min(1, 'Product name required'),
-  categoryId: z.string().min(1, 'Category required'),
-  description: z.string().min(10, 'Description too short'),
-  customerPriceKobo: z.number().min(100, 'Price too low'),
-  agentPriceKobo: z.number().min(100, 'Agent price too low'),
-  stockQty: z.number().min(0, 'Stock cannot be negative'),
-  specs: z.record(z.string()).optional(),
-});
 
 /**
  * POST /api/products/upload
@@ -40,6 +22,25 @@ const productSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    const { writeFile, mkdir } = await import('fs/promises');
+    const { join } = await import('path');
+    const sharp = await import('sharp');
+    const { v4: uuidv4 } = await import('uuid');
+    const { z } = await import('zod');
+    
+    const uploadDir = join(process.cwd(), 'public', 'uploads', 'products');
+
+    const productSchema = z.object({
+      name: z.string().min(1, 'Product name required'),
+      categoryId: z.string().min(1, 'Category required'),
+      description: z.string().min(10, 'Description too short'),
+      customerPriceKobo: z.number().min(100, 'Price too low'),
+      agentPriceKobo: z.number().min(100, 'Agent price too low'),
+      stockQty: z.number().min(0, 'Stock cannot be negative'),
+      specs: z.record(z.string()).optional(),
+    });
+    
     // Check admin role
     const userRole = request.headers.get('x-user-role');
     if (userRole !== 'ADMIN') {

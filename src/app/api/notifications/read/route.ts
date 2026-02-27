@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-
-const markReadSchema = z.object({
-  notificationIds: z.array(z.string()).optional(),
-  markAll: z.boolean().optional(),
-});
 
 /**
  * PATCH /api/notifications/read
@@ -22,6 +15,14 @@ const markReadSchema = z.object({
  */
 export async function PATCH(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    const { z } = await import('zod');
+    
+    const markReadSchema = z.object({
+      notificationIds: z.array(z.string()).optional(),
+      markAll: z.boolean().optional(),
+    });
+    
     // Get user from middleware
     const userId = request.headers.get('x-user-id');
 

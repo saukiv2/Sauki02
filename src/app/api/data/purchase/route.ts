@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  purchaseDataViaAmigo,
-  validatePhoneNumber,
-  formatPhoneNumber,
-} from '@/lib/amigo';
-import { sendDataPurchaseNotification } from '@/lib/notify';
-import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-
-const purchaseSchema = z.object({
-  planId: z.string().min(1, 'Plan ID required'),
-  phoneNumber: z.string().min(10, 'Invalid phone number'),
-});
 
 /**
  * POST /api/data/purchase
@@ -33,6 +19,21 @@ const purchaseSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    const { v4: uuidv4 } = await import('uuid');
+    const {
+      purchaseDataViaAmigo,
+      validatePhoneNumber,
+      formatPhoneNumber,
+    } = await import('@/lib/amigo');
+    const { sendDataPurchaseNotification } = await import('@/lib/notify');
+    const { z } = await import('zod');
+    
+    const purchaseSchema = z.object({
+      planId: z.string().min(1, 'Plan ID required'),
+      phoneNumber: z.string().min(10, 'Invalid phone number'),
+    });
+    
     // Get user from middleware header
     const userId = request.headers.get('x-user-id');
 

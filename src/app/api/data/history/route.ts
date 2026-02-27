@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -17,6 +16,8 @@ export const fetchCache = 'force-no-store';
  */
 export async function GET(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    
     // Get user from middleware header
     const userId = request.headers.get('x-user-id');
 

@@ -1,21 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { v4 as uuidv4 } from 'uuid';
-import { sendElectricityNotification } from '@/lib/notify';
-import { validateCustomer, sendBillPaymentAdvice, parseDisco } from '@/lib/interswitch';
-import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-
-const paySchema = z.object({
-  disco: z.string().min(1, 'DisCo required'),
-  meterNo: z.string().min(3, 'Meter number required'),
-  amountNaira: z.number().min(100, 'Minimum payment is ₦100'),
-  customerCode: z.string().optional(),
-});
 
 /**
  * POST /api/electricity/pay
@@ -34,6 +22,19 @@ const paySchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    const { v4: uuidv4 } = await import('uuid');
+    const { sendElectricityNotification } = await import('@/lib/notify');
+    const { validateCustomer, sendBillPaymentAdvice, parseDisco } = await import('@/lib/interswitch');
+    const { z } = await import('zod');
+    
+    const paySchema = z.object({
+      disco: z.string().min(1, 'DisCo required'),
+      meterNo: z.string().min(3, 'Meter number required'),
+      amountNaira: z.number().min(100, 'Minimum payment is ₦100'),
+      customerCode: z.string().optional(),
+    });
+    
     // Get user from middleware
     const userId = request.headers.get('x-user-id');
 

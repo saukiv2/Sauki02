@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { sendWalletCreditNotification } from '@/lib/notify';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +17,9 @@ const FLW_WEBHOOK_HASH = process.env.FLW_WEBHOOK_HASH || '';
  */
 export async function POST(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    const { sendWalletCreditNotification } = await import('@/lib/notify');
+    
     // Verify webhook signature
     const signature = request.headers.get('verif-hash');
     
