@@ -4,6 +4,7 @@
 import './globals.css';
 import { Inter, Playfair_Display } from 'next/font/google';
 import type { Metadata } from 'next';
+import { AuthProvider } from '@/contexts/auth-context';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -61,7 +62,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="font-inter antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

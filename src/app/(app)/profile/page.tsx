@@ -14,19 +14,17 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
-    phoneNumber: '',
+    phone: '',
   });
 
   useEffect(() => {
     if (user) {
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
+        fullName: user.fullName || '',
         email: user.email || '',
-        phoneNumber: user.phoneNumber || '',
+        phone: user.phone || '',
       });
     }
   }, [user]);
@@ -59,7 +57,7 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">
-              {user.firstName} {user.lastName}
+              {user.fullName}
             </h1>
             <p className="text-indigo-100 mt-2">{user.email}</p>
           </div>
@@ -84,28 +82,13 @@ export default function ProfilePage() {
         <Card className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              First Name
+              Full Name
             </label>
             <Input
               type="text"
-              value={formData.firstName}
+              value={formData.fullName}
               onChange={(e) =>
-                setFormData({ ...formData, firstName: e.target.value })
-              }
-              disabled={!editing}
-              className="w-full"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Last Name
-            </label>
-            <Input
-              type="text"
-              value={formData.lastName}
-              onChange={(e) =>
-                setFormData({ ...formData, lastName: e.target.value })
+                setFormData({ ...formData, fullName: e.target.value })
               }
               disabled={!editing}
               className="w-full"
@@ -133,9 +116,9 @@ export default function ProfilePage() {
             </label>
             <Input
               type="tel"
-              value={formData.phoneNumber}
+              value={formData.phone}
               onChange={(e) =>
-                setFormData({ ...formData, phoneNumber: e.target.value })
+                setFormData({ ...formData, phone: e.target.value })
               }
               disabled={!editing}
               className="w-full"
@@ -168,9 +151,15 @@ export default function ProfilePage() {
         <h2 className="text-xl font-bold mb-4">Account Status</h2>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-gray-700">Status</span>
-            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium capitalize">
-              {user.status}
+            <span className="text-gray-700">Verification</span>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                user.isVerified
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
+              }`}
+            >
+              {user.isVerified ? 'Verified' : 'Pending'}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -179,12 +168,14 @@ export default function ProfilePage() {
               {user.role}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-700">Member Since</span>
-            <span className="text-gray-600">
-              {new Date(user.createdAt).toLocaleDateString()}
-            </span>
-          </div>
+          {user.createdAt && (
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700">Member Since</span>
+              <span className="text-gray-600">
+                {new Date(user.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+          )}
         </div>
       </Card>
     </div>

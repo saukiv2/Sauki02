@@ -22,6 +22,6 @@ export function useUser() {
  * Hook for auth methods
  */
 export function useAuthMethods() {
-  const { login, register, logout } = useAuth();
-  return { login, register, logout };
+  const { login, logout } = useAuth();
+  return { login, logout };
 }

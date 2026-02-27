@@ -1,15 +1,15 @@
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'user' | 'admin' | 'ADMIN' | 'CUSTOMER' | 'AGENT';
 
 export interface User {
   id: string;
   email: string;
-  phoneNumber: string;
-  firstName: string;
-  lastName: string;
+  phone?: string;
+  fullName: string;
   role: UserRole;
-  status: 'active' | 'inactive' | 'suspended';
-  createdAt: Date;
-  updatedAt: Date;
+  isVerified?: boolean;
+  isSuspended?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Wallet {
