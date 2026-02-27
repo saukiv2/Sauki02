@@ -112,12 +112,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-        totalProducts,
-        recentOrders,
-      },
-    });
-  } catch (error) {
-    console.error('Get stats error:', error);
-    return NextResponse.json({ message: 'Failed to fetch stats' }, { status: 500 });
-  }
-}
