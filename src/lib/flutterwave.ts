@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-const FLW_SECRET_KEY = process.env.FLW_SECRET_KEY || '';
 const FLW_BASE_URL = 'https://api.flutterwave.com/v3';
+
+// Defer reading secret until it's needed
+const getFLWSecretKey = () => process.env.FLW_SECRET_KEY || '';
 
 export interface FlutterwavePaymentRequest {
   amount: number;
@@ -18,6 +20,7 @@ export async function initializeFlutterwavePayment(
   payload: FlutterwavePaymentRequest
 ): Promise<any> {
   try {
+    const FLW_SECRET_KEY = getFLWSecretKey();
     const response = await axios.post(
       `${FLW_BASE_URL}/payments`,
       {

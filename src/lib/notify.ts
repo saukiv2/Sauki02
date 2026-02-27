@@ -1,6 +1,3 @@
-import { prisma } from './db';
-import { sendFCMMulticast } from './firebase-admin';
-
 /**
  * Firebase Cloud Messaging notification service
  * Sends push notifications to registered Android devices
@@ -25,6 +22,9 @@ export async function createNotification(
   payload: NotificationPayload
 ): Promise<boolean> {
   try {
+    const { prisma } = await import('./db');
+    const { sendFCMMulticast } = await import('./firebase-admin');
+    
     // Save notification to database
     await prisma.notification.create({
       data: {
@@ -196,6 +196,9 @@ export async function sendBroadcastNotification(
   type: string = 'broadcast'
 ): Promise<boolean> {
   try {
+    const { prisma } = await import('./db');
+    const { sendFCMMulticast } = await import('./firebase-admin');
+    
     // Save broadcast notification (userId = null)
     await prisma.notification.create({
       data: {

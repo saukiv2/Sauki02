@@ -1,10 +1,14 @@
 import jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
 const JWT_EXPIRY = '15m'; // 15 minutes
 const REFRESH_TOKEN_EXPIRY = '30d'; // 30 days
+
+// Defer reading secrets until they're needed
+const getJwtSecrets = () => ({
+  secret: process.env.JWT_SECRET || 'your-secret-key',
+  refreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret',
+});
 
 export interface TokenPayload {
   userId: string;
@@ -34,14 +38,16 @@ export async function verifyPassword(
  * Generate JWT access token (15 minutes)
  */
 export function generateAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+  const { secret } = getJwtSecrets();
+  return jwt.sign(payload, secret, { expiresIn: JWT_EXPIRY });
 }
 
 /**
  * Generate JWT refresh token (30 days)
  */
 export function generateRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
+  const { refreshSecret } = getJwtSecrets();
+  return jwt.sign(payload, refreshSecret, { expiresIn: REFRESH_TOKEN_EXPIRY });
 }
 
 /**
@@ -49,7 +55,8 @@ export function generateRefreshToken(payload: TokenPayload): string {
  */
 export function verifyAccessToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const { secret } = getJwtSecrets();
+    return jwt.verify(token, secret) as TokenPayload;
   } catch {
     return null;
   }
@@ -60,7 +67,8 @@ export function verifyAccessToken(token: string): TokenPayload | null {
  */
 export function verifyRefreshToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_REFRESH_SECRET) as TokenPayload;
+    const { refreshSecret } = getJwtSecrets();
+    return jwt.verify(token, refreshSecret) as TokenPayload;
   } catch {
     return null;
   }
