@@ -1,148 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loginSchema } from '@/lib/validation';
-import { verifyPassword, generateAccessToken, generateRefreshToken, hashToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
-import { checkRateLimit } from '@/lib/rate-limit';
 
-// Route configuration
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-
 export async function POST(request: NextRequest) {
   try {
-    // Get client IP for rate limiting
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
-
-    // STEP 1: Rate limiting - 5 attempts per 15 minutes per IP
-    const rateLimit = checkRateLimit(ip, 5, 15 * 60 * 1000);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { message: 'Too many login attempts. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': '900' } }
-      );
-    }
-
-    // STEP 2: Validate input
     const body = await request.json();
-    const validation = loginSchema.safeParse(body);
+    const { email, password } = body;
 
-    if (!validation.success) {
+    if (!email || !password) {
       return NextResponse.json(
-        { message: 'Validation failed', errors: validation.error.flatten() },
+        { message: 'Email and password required' },
         { status: 400 }
       );
     }
 
-    const { email, password } = validation.data;
+    // Lazy import - avoid loading at build time
+    const { prisma } = await import('@/lib/db');
+    const { verifyPassword, generateAccessToken, generateRefreshToken, hashToken } = await import('@/lib/auth');
+    const { checkRateLimit } = await import('@/lib/rate-limit');
 
-    // STEP 3: Find user
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const rateLimit = checkRateLimit(ip, 5, 15 * 60 * 1000);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { message: 'Too many login attempts' },
+        { status: 429 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
       include: { wallet: true },
     });
 
-    if (!user) {
+    if (!user || !await verifyPassword(password, user.passwordHash)) {
       return NextResponse.json(
-        { message: 'Invalid email or password' },
+        { message: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
-    // STEP 4: Check if suspended
     if (user.isSuspended) {
       return NextResponse.json(
-        { message: 'Your account has been suspended' },
+        { message: 'Account suspended' },
         { status: 403 }
       );
     }
 
-    // STEP 5: Verify password
-    const passwordValid = await verifyPassword(password, user.passwordHash);
-
-    if (!passwordValid) {
-      return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-
-    // STEP 6: Generate tokens
-    const accessToken = generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    const refreshToken = generateRefreshToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    // STEP 7: Hash and store refresh token
+    const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
+    const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
     const tokenHash = hashToken(refreshToken);
-    
-    // Delete old sessions for this user to clean up
-    await prisma.session.deleteMany({
-      where: {
-        userId: user.id,
-        expiresAt: { lt: new Date() },
-      },
-    });
 
-    // Create new session
+    await prisma.session.deleteMany({ where: { userId: user.id, expiresAt: { lt: new Date() } } });
     await prisma.session.create({
       data: {
         userId: user.id,
         tokenHash,
-        deviceInfo: request.headers.get('user-agent') || undefined,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
 
-    // STEP 8: Return response with cookie
-    const response = NextResponse.json(
-      {
-        message: 'Login successful',
-        user: {
-          id: user.id,
-          fullName: user.fullName,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-        },
-        accessToken,
-        wallet: user.wallet
-          ? {
-              balanceKobo: user.wallet.balanceKobo,
-              flwAccountNumber: user.wallet.flwAccountNumber,
-              flwBankName: user.wallet.flwBankName,
-            }
-          : null,
+    const response = NextResponse.json({
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
       },
-      { status: 200 }
-    );
+      accessToken,
+      wallet: user.wallet ? { balanceKobo: user.wallet.balanceKobo } : null,
+    });
 
-    // Set HTTP-only refresh token cookie
     response.cookies.set('sm_refresh', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+      maxAge: 30 * 24 * 60 * 60,
       path: '/',
     });
 
     return response;
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
