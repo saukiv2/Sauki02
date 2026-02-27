@@ -22,21 +22,14 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const router = useRouter();
   const user = useUser();
-  const { logout, checkAuth } = useAuthMethods();
+  const { logout } = useAuthMethods();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Restore auth state when app-layout mounts
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  // Redirect if not authenticated
+  // Only redirect if not authenticated AFTER loading is complete
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      if (!token) {
-        router.push('/auth/login');
-      }
+      console.log('[AppLayout] Not authenticated, redirecting to login');
+      router.push('/auth/login');
     }
   }, [isLoading, isAuthenticated, router]);
 
