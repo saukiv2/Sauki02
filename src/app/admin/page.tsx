@@ -31,7 +31,7 @@ interface Stats {
     status: string;
     totalKobo: number;
     createdAt: string;
-    user: { firstName: string; lastName: string; phone: string };
+    user: { fullName: string; phone: string };
   }>;
 }
 
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
               {stats.recentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                   <td className="p-3 font-medium text-gray-900">
-                    {order.user.firstName} {order.user.lastName}
+                    {order.user.fullName}
                     <span className="block text-xs text-gray-400 font-normal">
                       {order.user.phone}
                     </span>
