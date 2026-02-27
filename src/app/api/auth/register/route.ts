@@ -27,8 +27,6 @@ export async function POST(request: NextRequest) {
     const FLW_SECRET_KEY = process.env.FLW_SECRET_KEY || '';
     const FLW_BASE_URL = 'https://api.flutterwave.com/v3';
 
-    const fullName = `${firstName} ${lastName}`;
-
     const existingUser = await prisma.user.findFirst({
       where: { OR: [{ email }, { phone }] },
     });
@@ -48,7 +46,7 @@ export async function POST(request: NextRequest) {
         phonenumber: phone,
         firstname: firstName,
         lastname: lastName,
-        narration: `SaukiMart Wallet - ${fullName}`,
+        narration: `SaukiMart Wallet - ${firstName} ${lastName}`,
         is_permanent: true,
         bvn,
       }, {
@@ -78,7 +76,8 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          fullName,
+          firstName,
+          lastName,
           email,
           phone,
           passwordHash,
@@ -116,13 +115,22 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json(
       {
         message: 'Registration successful',
-        user: { id: result.user.id, fullName, email, phone, role: 'CUSTOMER' },
-        accessToken,
+        user: { id: result.user.id, firstName, lastName, email, phone, role: 'CUSTOMER' },
         wallet: { balanceKobo: 0, flwAccountNumber, flwBankName },
       },
       { status: 201 }
     );
 
+    // Set access token (short-lived, 1 hour)
+    response.cookies.set('sm_access', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60,
+      path: '/',
+    });
+
+    // Set refresh token (long-lived, 30 days)
     response.cookies.set('sm_refresh', refreshTokenFinal, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

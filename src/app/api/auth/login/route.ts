@@ -63,19 +63,30 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Set both tokens as HTTP-only cookies (secure, not accessible by JavaScript)
     const response = NextResponse.json({
       message: 'Login successful',
       user: {
         id: user.id,
-        fullName: user.fullName,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         email: user.email,
         phone: user.phone,
         role: user.role,
       },
-      accessToken,
       wallet: user.wallet ? { balanceKobo: user.wallet.balanceKobo } : null,
     });
 
+    // Set access token (short-lived, 1 hour)
+    response.cookies.set('sm_access', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60,
+      path: '/',
+    });
+
+    // Set refresh token (long-lived, 30 days)
     response.cookies.set('sm_refresh', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

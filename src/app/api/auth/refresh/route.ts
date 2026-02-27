@@ -39,11 +39,29 @@ export async function POST(request: NextRequest) {
       role: user.role,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Token refreshed',
-      accessToken: newAccessToken,
-      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+      },
+      wallet: user.wallet ? { balanceKobo: user.wallet.balanceKobo } : null,
     });
+
+    // Set new access token as HTTP-only cookie
+    response.cookies.set('sm_access', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60,
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Refresh error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });

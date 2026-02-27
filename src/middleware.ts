@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
+import jwt from 'jsonwebtoken';
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-key-change-in-production');
+interface TokenPayload {
+  userId: string;
+  role: string;
+  email: string;
+}
 
-async function verifyAuth(token: string) {
+function verifyAuth(token: string): TokenPayload | null {
   try {
-    const verified = await jwtVerify(token, secret);
-    return verified.payload as any;
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as TokenPayload;
+    return payload;
   } catch (error) {
     return null;
   }
@@ -27,22 +31,23 @@ export async function middleware(request: NextRequest) {
   ];
 
   const pathname = request.nextUrl.pathname;
-  
+
   // Check if this is a protected route
   const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path));
 
   if (isProtectedRoute) {
     try {
-      const authHeader = request.headers.get('authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
+      // Get access token from HTTP-only cookie
+      const accessToken = request.cookies.get('sm_access')?.value;
+
+      if (!accessToken) {
         return NextResponse.json(
-          { message: 'Missing or invalid authorization header' },
+          { message: 'Missing authentication token' },
           { status: 401 }
         );
       }
 
-      const token = authHeader.slice(7);
-      const payload = await verifyAuth(token);
+      const payload = verifyAuth(accessToken);
 
       if (!payload || !payload.userId) {
         return NextResponse.json(
@@ -51,15 +56,15 @@ export async function middleware(request: NextRequest) {
         );
       }
 
-      // Clone request and add user ID to headers
-      const requestWithUser = request.clone();
-      const response = NextResponse.next({ request: requestWithUser });
+      // Clone request and add user info to headers for downstream handlers
+      const response = NextResponse.next();
       response.headers.set('x-user-id', payload.userId);
       response.headers.set('x-user-role', payload.role || 'CUSTOMER');
+      response.headers.set('x-user-email', payload.email);
 
       return response;
     } catch (error) {
-      console.error('Auth middleware error:', error);
+      console.error('[Middleware] Auth validation error:', error);
       return NextResponse.json(
         { message: 'Authentication failed' },
         { status: 401 }

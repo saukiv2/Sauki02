@@ -11,7 +11,6 @@ interface AuthContextType {
   login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: Partial<User>) => void;
-  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,100 +20,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const checkAuth = useCallback(async () => {
-    console.log('[Auth] checkAuth called');
+  // Restore user from cookies on mount
+  const restoreUser = useCallback(async () => {
+    console.log('[Auth] Restoring user from cookies...');
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include', // Include cookies
+      });
 
-      console.log('[Auth] Token:', !!token, 'User:', !!storedUserStr);
-
-      if (!token || !storedUserStr) {
-        console.log('[Auth] Clearing user');
-        setUser(null);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Auth] User restored:', data.user?.id);
+        setUser(data.user);
       } else {
-        try {
-          const parsedUser = JSON.parse(storedUserStr);
-          console.log('[Auth] Setting user:', parsedUser.id);
-          setUser(parsedUser);
-        } catch (e) {
-          console.error('[Auth] Parse error:', e);
-          setUser(null);
-        }
+        console.log('[Auth] No valid session');
+        setUser(null);
       }
     } catch (error) {
-      console.error('[Auth] Error:', error);
+      console.error('[Auth] Restore error:', error);
       setUser(null);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Check auth on mount
+  // Restore user on provider mount
   useEffect(() => {
-    console.log('[Auth] Provider mounted');
-    checkAuth();
-  }, [checkAuth]);
+    console.log('[Auth] Provider mounted, restoring session...');
+    restoreUser();
+  }, [restoreUser]);
 
-  const login = useCallback(async (phone: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
-      });
+  const login = useCallback(
+    async (phone: string, password: string) => {
+      console.log('[Auth] Login attempt:', phone);
+      setIsLoading(true);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
-      }
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Include/set cookies
+          body: JSON.stringify({ phone, password }),
+        });
 
-      const data = await response.json();
-      console.log('[Auth] Login response, user:', data.user?.id);
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('accessToken', data.accessToken);
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-          console.log('[Auth] Stored in localStorage');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Login failed');
         }
-      }
 
-      setUser(data.user);
-      setIsLoading(false);
+        const data = await response.json();
+        console.log('[Auth] Login successful, user:', data.user?.id);
 
-      // Wait a tick then redirect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      if (data.user?.role === 'ADMIN') {
-        console.log('[Auth] Redirecting to admin');
-        router.push('/admin');
-      } else {
-        console.log('[Auth] Redirecting to dashboard');
-        router.push('/dashboard');
+        // Set user from response
+        setUser(data.user);
+        setIsLoading(false);
+
+        // Wait for state to update, then redirect
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (data.user?.role === 'ADMIN') {
+          console.log('[Auth] Redirecting to admin');
+          router.push('/admin');
+        } else {
+          console.log('[Auth] Redirecting to dashboard');
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('[Auth] Login error:', error);
+        setIsLoading(false);
+        throw error;
       }
-    } catch (error) {
-      console.error('[Auth] Login error:', error);
-      setIsLoading(false);
-      throw error;
-    }
-  }, [router]);
+    },
+    [router]
+  );
 
   const logout = useCallback(async () => {
-    console.log('[Auth] Logging out');
+    console.log('[Auth] Logging out...');
     setIsLoading(true);
+
     try {
+      // Call logout endpoint to clear cookies
       await fetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
     } catch (error) {
       console.error('[Auth] Logout error:', error);
     } finally {
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
-      }
       setUser(null);
       setIsLoading(false);
       router.push('/auth/login');
@@ -122,13 +114,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const updateUser = useCallback((updates: Partial<User>) => {
-    setUser((prev: User | null) => {
+    setUser(prev => {
       if (!prev) return null;
-      const updated = { ...prev, ...updates };
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('user', JSON.stringify(updated));
-      }
-      return updated;
+      return { ...prev, ...updates };
     });
   }, []);
 
@@ -139,7 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     updateUser,
-    checkAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

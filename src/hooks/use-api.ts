@@ -9,7 +9,8 @@ interface ApiError {
 }
 
 /**
- * Hook for making API calls with consistent error handling and auth
+ * Hook for making API calls with consistent error handling
+ * Cookies are automatically included via credentials
  */
 export function useApi() {
   const [isLoading, setIsLoading] = useState(false);
@@ -26,21 +27,9 @@ export function useApi() {
       setError(null);
 
       try {
-        // Get auth token from localStorage
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        
-        // Prepare headers with auth
-        const headers: Record<string, string> = {
-          ...config?.headers,
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
         const response = await axios[method]<T>(url, data, {
           ...config,
-          headers,
+          withCredentials: true, // Include HTTP-only cookies automatically
         });
         return response.data;
       } catch (err) {
@@ -48,14 +37,12 @@ export function useApi() {
         const errorData = axiosError.response?.data || {
           message: axiosError.message,
         };
-        
-        // Handle 401 - redirect to login
+
+        // Handle 401 - cookies expired/invalid
         if (axiosError.response?.status === 401 && typeof window !== 'undefined') {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('user');
           window.location.href = '/auth/login';
         }
-        
+
         setError(errorData);
         return null;
       } finally {
@@ -66,7 +53,7 @@ export function useApi() {
   );
 
   const get = useCallback(
-    async <T,>(url: string, config?: AxiosRequestConfig): Promise<T | null> => 
+    async <T,>(url: string, config?: AxiosRequestConfig): Promise<T | null> =>
       request('get', url, undefined, config),
     [request]
   );
@@ -90,7 +77,7 @@ export function useApi() {
   );
 
   const del = useCallback(
-    async <T,>(url: string, config?: AxiosRequestConfig): Promise<T | null> => 
+    async <T,>(url: string, config?: AxiosRequestConfig): Promise<T | null> =>
       request('delete', url, undefined, config),
     [request]
   );

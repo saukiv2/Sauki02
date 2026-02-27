@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ message: 'Logout successful' });
+    response.cookies.delete('sm_access');
     response.cookies.delete('sm_refresh');
     return response;
   } catch (error) {
