@@ -25,9 +25,11 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { logout } = useAuthMethods();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated after initial check completes
   useEffect(() => {
+    // Only redirect after we've checked auth (not just on initial load)
     if (!isLoading && !isAuthenticated) {
+      console.log('[AppLayout] Redirecting to login - not authenticated');
       router.push('/auth/login');
     }
   }, [isAuthenticated, isLoading, router]);
