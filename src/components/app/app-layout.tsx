@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useUser, useAuthMethods } from '@/hooks/use-auth';
-import { useAuth } from '@/contexts/auth-context';
 import { NotificationBell } from '@/components/app/notification-bell';
-import { Spinner } from '@/components/ui/spinner';
 import { LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const navigationItems = [
   { label: 'Dashboard', href: '/dashboard', icon: '📊' },
@@ -20,36 +18,13 @@ const navigationItems = [
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
-  const router = useRouter();
   const user = useUser();
   const { logout } = useAuthMethods();
-  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/auth/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner />
-      </div>
-    );
-  }
-
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
+    router.push('/auth/login');
   };
 
   return (
@@ -102,7 +77,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <header className="bg-white shadow-sm p-6 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              Welcome back, {user?.fullName || 'User'}!
+              Welcome back, {user?.firstName}!
             </h2>
           </div>
 

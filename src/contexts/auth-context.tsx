@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -9,100 +8,46 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: Partial<User>) => void;
-  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Check if user is authenticated on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-
-      // TODO: Optionally verify token with backend
-      // For now, we'll assume the token is valid
-      // In a real app, you'd call /api/auth/me or similar
-      setUser(null); // Will be set when user logs in
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, _password: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
-      }
-
-      const data = await response.json();
-
-      // Store token
-      localStorage.setItem('accessToken', data.accessToken);
-      if (data.refreshToken) {
-        localStorage.setItem('refreshToken', data.refreshToken);
-      }
-
-      // Set user data
-      setUser(data.user || { email, fullName: '', id: '', role: data.role });
-
-      // Redirect based on role
-      if (data.role === 'ADMIN') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+      // TODO: Implement login logic
+      console.log('Login:', email);
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, []);
+
+  const register = useCallback(async (email: string, _password: string) => {
+    setIsLoading(true);
+    try {
+      // TODO: Implement register logic
+      console.log('Register:', email);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      // TODO: Implement logout logic
       setUser(null);
+    } finally {
       setIsLoading(false);
-      router.push('/auth/login');
     }
-  }, [router]);
+  }, []);
 
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prev: User | null) => (prev ? { ...prev, ...updates } : null));
@@ -113,9 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     isAuthenticated: !!user,
     login,
+    register,
     logout,
     updateUser,
-    checkAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
