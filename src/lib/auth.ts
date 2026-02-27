@@ -48,18 +48,17 @@ export function hashToken(token: string): string {
 }
 
 /**
- * Verify JWT access token (now a no-op, tokens verified via DB)
+ * Verify access token - for compatibility, just check if token exists
+ * Real verification happens at API handler level via DB session lookup
  */
-export function verifyAccessToken(token: string): TokenPayload | null {
-  // With session-based auth, verification happens at the database level
-  // This is kept for API compatibility
-  return token ? { userId: '', email: '', role: 'CUSTOMER' } : null;
+export function verifyAccessToken(token: string): boolean {
+  return !!token;
 }
 
 /**
- * Verify JWT refresh token (now a no-op, tokens verified via DB)
+ * Verify refresh token - for compatibility, just check if token exists
+ * Real verification happens at API handler level via DB session lookup
  */
-export function verifyRefreshToken(token: string): TokenPayload | null {
-  // With session-based auth, verification happens at the database level
-  return token ? { userId: '', email: '', role: 'CUSTOMER' } : null;
+export function verifyRefreshToken(token: string): boolean {
+  return !!token;
 }
