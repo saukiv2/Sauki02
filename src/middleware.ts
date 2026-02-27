@@ -9,9 +9,11 @@ interface TokenPayload {
 
 function verifyAuth(token: string): TokenPayload | null {
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as TokenPayload;
+    const secret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+    const payload = jwt.verify(token, secret) as TokenPayload;
     return payload;
   } catch (error) {
+    console.error('[Middleware] Token verification failed');
     return null;
   }
 }
@@ -41,6 +43,7 @@ export async function middleware(request: NextRequest) {
       const accessToken = request.cookies.get('sm_access')?.value;
 
       if (!accessToken) {
+        console.log('[Middleware] Missing auth token for', pathname);
         return NextResponse.json(
           { message: 'Missing authentication token' },
           { status: 401 }
@@ -50,6 +53,7 @@ export async function middleware(request: NextRequest) {
       const payload = verifyAuth(accessToken);
 
       if (!payload || !payload.userId) {
+        console.log('[Middleware] Invalid token for', pathname);
         return NextResponse.json(
           { message: 'Invalid or expired token' },
           { status: 401 }

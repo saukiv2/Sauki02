@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface TokenPayload {
@@ -26,21 +27,23 @@ export async function verifyPassword(
 }
 
 /**
- * Generate a secure token (simplified - no JWT)
+ * Generate a proper JWT access token (1 hour expiry)
  */
 export function generateAccessToken(payload: TokenPayload): string {
-  return uuidv4();
+  const secret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+  return jwt.sign(payload, secret, { expiresIn: '1h' });
 }
 
 /**
- * Generate a secure refresh token
+ * Generate a proper JWT refresh token (30 days expiry)
  */
 export function generateRefreshToken(payload: TokenPayload): string {
-  return uuidv4();
+  const secret = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret-change-in-production';
+  return jwt.sign(payload, secret, { expiresIn: '30d' });
 }
 
 /**
- * Hash token for storage
+ * Hash token for storage in DB
  */
 export function hashToken(token: string): string {
   // Simple hash - in production use proper hashing
@@ -48,17 +51,29 @@ export function hashToken(token: string): string {
 }
 
 /**
- * Verify access token - for compatibility, just check if token exists
- * Real verification happens at API handler level via DB session lookup
+ * Verify access token
  */
-export function verifyAccessToken(token: string): boolean {
-  return !!token;
+export function verifyAccessToken(token: string): TokenPayload | null {
+  try {
+    const secret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+    const payload = jwt.verify(token, secret) as TokenPayload;
+    return payload;
+  } catch (error) {
+    console.error('[Auth] Token verification failed:', error);
+    return null;
+  }
 }
 
 /**
- * Verify refresh token - for compatibility, just check if token exists
- * Real verification happens at API handler level via DB session lookup
+ * Verify refresh token
  */
-export function verifyRefreshToken(token: string): boolean {
-  return !!token;
+export function verifyRefreshToken(token: string): TokenPayload | null {
+  try {
+    const secret = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret-change-in-production';
+    const payload = jwt.verify(token, secret) as TokenPayload;
+    return payload;
+  } catch (error) {
+    console.error('[Auth] Refresh token verification failed:', error);
+    return null;
+  }
 }

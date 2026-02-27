@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
   try {
     const accessToken = request.cookies.get('sm_access')?.value;
 
+    console.log('[Auth/ME] Checking session, token exists:', !!accessToken);
+
     if (!accessToken) {
+      console.log('[Auth/ME] No access token in cookies');
       return NextResponse.json(
         { message: 'Not authenticated' },
         { status: 401 }
@@ -22,10 +25,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify and decode token
-    const decoded = jwt.verify(
-      accessToken,
-      process.env.JWT_SECRET || 'fallback-secret'
-    ) as TokenPayload;
+    let decoded: TokenPayload;
+    try {
+      const secret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+      decoded = jwt.verify(accessToken, secret) as TokenPayload;
+      console.log('[Auth/ME] Token verified for user:', decoded.userId);
+    } catch (jwtError: any) {
+      console.error('[Auth/ME] JWT verification failed:', jwtError.message);
+      return NextResponse.json(
+        { message: 'Invalid token' },
+        { status: 401 }
+      );
+    }
 
     // Lazy import
     const { prisma } = await import('@/lib/db');
@@ -36,13 +47,23 @@ export async function GET(request: NextRequest) {
       include: { wallet: true },
     });
 
-    if (!user || user.isSuspended) {
+    if (!user) {
+      console.log('[Auth/ME] User not found:', decoded.userId);
       return NextResponse.json(
-        { message: 'User not found or suspended' },
-        { status: 401 }
+        { message: 'User not found' },
+        { status: 404 }
       );
     }
 
+    if (user.isSuspended) {
+      console.log('[Auth/ME] User suspended:', decoded.userId);
+      return NextResponse.json(
+        { message: 'User suspended' },
+        { status: 403 }
+      );
+    }
+
+    console.log('[Auth/ME] Returning user data:', user.id);
     return NextResponse.json({
       user: {
         id: user.id,
@@ -55,10 +76,10 @@ export async function GET(request: NextRequest) {
       wallet: user.wallet ? { balanceKobo: user.wallet.balanceKobo } : null,
     });
   } catch (error) {
-    console.error('[Auth/ME] Error:', error);
+    console.error('[Auth/ME] Unexpected error:', error);
     return NextResponse.json(
       { message: 'Failed to get user' },
-      { status: 401 }
+      { status: 500 }
     );
   }
 }
