@@ -19,52 +19,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Cache user to survive provider re-renders
+  const userCacheRef = React.useRef<User | null>(null);
+  const hasCheckedRef = React.useRef(false);
+  // Lock prevents restore overwriting a successful login
+  const isSessionLockedRef = React.useRef(false);
 
-  // Restore user from cookies - simple and always works
   const restoreUser = useCallback(async () => {
-    console.log('[Auth] Attempting to restore session from cookies...');
+    // If session is locked (user just logged in), don't interfere
+    if (isSessionLockedRef.current) {
+      console.log('[Auth] Session locked - user just logged in, skipping restore');
+      setIsLoading(false);
+      return;
+    }
+
+    // If we already have user cached, restore immediately without API call
+    if (userCacheRef.current) {
+      console.log('[Auth] ✓ Using cached user:', userCacheRef.current.id);
+      setUser(userCacheRef.current);
+      setIsLoading(false);
+      return true;
+    }
+
+    console.log('[Auth] Attempting to restore session from API...');
     try {
       const response = await fetch('/api/auth/me', {
-        credentials: 'include', // Include HTTP-only cookies
+        credentials: 'include',
+        cache: 'no-store',
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[Auth] ✓ Session restored for user:', data.user?.id);
+        console.log('[Auth] ✓ Session restored from API for user:', data.user?.id);
         setUser(data.user);
+        userCacheRef.current = data.user;
         return true;
       } else {
-        console.log('[Auth] ✗ No valid session (status:', response.status, ')');
+        console.log('[Auth] ✗ No valid session from API (status:', response.status, ')');
         setUser(null);
+        userCacheRef.current = null;
         return false;
       }
     } catch (error) {
       console.error('[Auth] ✗ Session restore error:', error);
       setUser(null);
+      userCacheRef.current = null;
       return false;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Restore on mount only - use empty dependencies
+  // Check auth only once on app startup
   useEffect(() => {
-    console.log('[Auth] Provider mounted, attempting restore...');
+    if (hasCheckedRef.current) {
+      console.log('[Auth] Already checked, skipping restore');
+      return;
+    }
+    hasCheckedRef.current = true;
+    console.log('[Auth] App starting up, checking auth session...');
     restoreUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // CRITICAL: Empty array means run ONLY on mount
+  }, []);
 
   const login = useCallback(
     async (phone: string, password: string) => {
-      console.log('[Auth] LOGIN: attempting login with', phone);
+      console.log('[Auth] LOGIN: attempting with', phone);
       setIsLoading(true);
-      setUser(null); // Clear previous state
+      setUser(null);
+      userCacheRef.current = null;
+      isSessionLockedRef.current = false; // Unlock for fresh login
 
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include', // CRITICAL: Include cookies in request/response
+          credentials: 'include',
           body: JSON.stringify({ phone, password }),
         });
 
@@ -75,19 +106,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await response.json();
-        console.log('[Auth] LOGIN SUCCESS: user ', data.user?.id, ', cookies set by server');
+        console.log('[Auth] LOGIN SUCCESS: user', data.user?.id);
 
-        // Set user from response
+        // Lock the session to prevent restore from interfering
+        isSessionLockedRef.current = true;
+        console.log('[Auth] Session locked to protect login state');
+
+        // Set user in BOTH state and cache
         setUser(data.user);
-        console.log('[Auth] User state updated in React:', data.user?.id);
-        
+        userCacheRef.current = data.user;
         setIsLoading(false);
-        console.log('[Auth] IsLoading set to false');
+        console.log('[Auth] User cached, state set, waiting for sync...');
 
-        // Wait a bit for state to sync
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Wait for React state to settle
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        console.log('[Auth] Redirecting to', data.user?.role === 'ADMIN' ? 'admin' : 'dashboard');
+        // Unlock session after state is stable
+        isSessionLockedRef.current = false;
+        console.log('[Auth] Session unlocked, redirecting to dashboard...');
         if (data.user?.role === 'ADMIN') {
           router.push('/admin');
         } else {
@@ -97,6 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[Auth] LOGIN FAILED:', error);
         setIsLoading(false);
         setUser(null);
+        userCacheRef.current = null;
+        isSessionLockedRef.current = false;
         throw error;
       }
     },
@@ -106,20 +144,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     console.log('[Auth] LOGOUT: starting...');
     setIsLoading(true);
+    
+    // Clear everything immediately
+    setUser(null);
+    userCacheRef.current = null;
+    hasCheckedRef.current = false;
+    isSessionLockedRef.current = false;
 
     try {
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
-      console.log('[Auth] LOGOUT: API call responded with', response.status);
+      console.log('[Auth] LOGOUT: API responded with', response.status);
     } catch (error) {
-      console.error('[Auth] LOGOUT: API call failed:', error);
+      console.error('[Auth] LOGOUT: API error:', error);
     } finally {
-      // Clear state regardless of API success
-      setUser(null);
       setIsLoading(false);
-      console.log('[Auth] LOGOUT: redirecting to login');
+      console.log('[Auth] LOGOUT: complete, redirecting to login');
       router.push('/auth/login');
     }
   }, [router]);
@@ -127,7 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser(prev => {
       if (!prev) return null;
-      return { ...prev, ...updates };
+      const updated = { ...prev, ...updates };
+      userCacheRef.current = updated; // Keep cache in sync
+      return updated;
     });
   }, []);
 
