@@ -28,27 +28,27 @@ export async function GET(request: NextRequest) {
       where: { createdAt: { gte: startOfMonth } },
     });
 
-    const totalRevenueData = await prisma.order.aggregate({ _sum: { amount: true } });
-    const totalRevenueKobo = totalRevenueData._sum.amount || 0;
+    const totalRevenueData = await prisma.order.aggregate({ _sum: { totalKobo: true } });
+    const totalRevenueKobo = totalRevenueData._sum.totalKobo || 0;
 
     const monthRevenueData = await prisma.order.aggregate({
       where: { createdAt: { gte: startOfMonth } },
-      _sum: { amount: true },
+      _sum: { totalKobo: true },
     });
-    const revenueThisMonthKobo = monthRevenueData._sum.amount || 0;
+    const revenueThisMonthKobo = monthRevenueData._sum.totalKobo || 0;
 
     const startOfLastMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() - 1, 1);
     const lastMonthRevenueData = await prisma.order.aggregate({
       where: { createdAt: { gte: startOfLastMonth, lt: startOfMonth } },
-      _sum: { amount: true },
+      _sum: { totalKobo: true },
     });
-    const lastMonthRevenueKobo = lastMonthRevenueData._sum.amount || 1;
+    const lastMonthRevenueKobo = lastMonthRevenueData._sum.totalKobo || 1;
     const revenueChangePercent = lastMonthRevenueKobo > 0
       ? Math.round(((revenueThisMonthKobo - lastMonthRevenueKobo) / lastMonthRevenueKobo) * 100)
       : 0;
 
     const failedTransactions = await prisma.order.count({
-      where: { status: { in: ['CANCELLED', 'FAILED'] } },
+      where: { status: 'CANCELLED' },
     });
     const pendingOrders = await prisma.order.count({
       where: { status: 'PENDING' },
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
-        user: { select: { firstName: true, lastName: true, phone: true } },
+        user: { select: { fullName: true, phone: true } },
       },
     });
 
