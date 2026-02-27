@@ -7,11 +7,11 @@ export const fetchCache = 'force-no-store';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { phone, password } = body;
 
-    if (!email || !password) {
+    if (!phone || !password) {
       return NextResponse.json(
-        { message: 'Email and password required' },
+        { message: 'Phone and password required' },
         { status: 400 }
       );
     }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { phone },
       include: { wallet: true },
     });
 

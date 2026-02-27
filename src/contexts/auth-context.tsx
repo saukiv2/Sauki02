@@ -29,16 +29,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     try {
       const token = localStorage.getItem('accessToken');
+      const storedUser = localStorage.getItem('user');
+      
       if (!token) {
         setUser(null);
         setIsLoading(false);
         return;
       }
 
-      // TODO: Optionally verify token with backend
-      // For now, we'll assume the token is valid
-      // In a real app, you'd call /api/auth/me or similar
-      setUser(null); // Will be set when user logs in
+      // Restore user from localStorage if available
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Failed to parse stored user:', e);
+          setUser(null);
+        }
+      }
     } catch (error) {
       console.error('Auth check failed:', error);
       setUser(null);
