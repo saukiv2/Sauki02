@@ -9,12 +9,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { firstName, lastName, email, phone, password, bvn } = body;
 
+    console.log('[Auth/Register] Starting registration for:', email, phone);
+
     if (!firstName || !lastName || !email || !phone || !password || !bvn) {
+      console.log('[Auth/Register] Missing required fields');
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
     // Validate BVN is 11 digits
     if (bvn.length !== 11 || !/^\d+$/.test(bvn)) {
+      console.log('[Auth/Register] Invalid BVN format');
       return NextResponse.json({ message: 'BVN must be 11 digits' }, { status: 400 });
     }
 
@@ -32,6 +36,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
+      console.log('[Auth/Register] User already exists');
       return NextResponse.json({ message: 'User already exists' }, { status: 400 });
     }
 
@@ -125,7 +130,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('sm_access', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 60 * 60,
       path: '/',
     });
@@ -134,14 +139,15 @@ export async function POST(request: NextRequest) {
     response.cookies.set('sm_refresh', refreshTokenFinal, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 30 * 24 * 60 * 60,
       path: '/',
     });
 
+    console.log('[Auth/Register] ✓ Registration successful, cookies set for user:', result.user.id);
     return response;
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('[Auth/Register] ✗ Error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }

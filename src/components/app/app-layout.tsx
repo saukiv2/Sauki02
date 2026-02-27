@@ -27,22 +27,24 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   // Only redirect if not authenticated AFTER loading is complete
   useEffect(() => {
-    // Don't check while still loading
+    console.log('[AppLayout] useEffect triggered: isLoading=', isLoading, 'isAuthenticated=', isAuthenticated);
+
+    // While still loading, show spinner
     if (isLoading) {
-      console.log('[AppLayout] Still loading, waiting...');
+      console.log('[AppLayout] Still loading, showing spinner');
       return;
     }
 
-    // If authenticated, don't redirect
+    // If authenticated, show content
     if (isAuthenticated) {
-      console.log('[AppLayout] Authenticated, showing dashboard');
+      console.log('[AppLayout] ✓ User authenticated as:', user?.id);
       return;
     }
 
-    // Not authenticated and loading is done - redirect to login
-    console.log('[AppLayout] Not authenticated, redirecting to login');
+    // Not authenticated after loading completed - redirect
+    console.log('[AppLayout] ✗ Not authenticated, redirecting to login');
     router.push('/auth/login');
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, user?.id]);
 
   if (isLoading || !isAuthenticated) {
     return (

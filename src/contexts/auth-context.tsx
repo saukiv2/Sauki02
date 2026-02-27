@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types';
 
@@ -19,84 +19,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isRestoringRef = useRef(false); // Prevent duplicate restore calls
 
-  // Restore user from cookies on mount (only once)
+  // Restore user from cookies - simple and always works
   const restoreUser = useCallback(async () => {
-    // Prevent duplicate calls
-    if (isRestoringRef.current) {
-      console.log('[Auth] Restore already in progress');
-      return;
-    }
-
-    isRestoringRef.current = true;
-    console.log('[Auth] Starting session restore...');
-
+    console.log('[Auth] Attempting to restore session from cookies...');
     try {
       const response = await fetch('/api/auth/me', {
-        credentials: 'include', // Include cookies
+        credentials: 'include', // Include HTTP-only cookies
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[Auth] Session restored for user:', data.user?.id);
+        console.log('[Auth] ✓ Session restored for user:', data.user?.id);
         setUser(data.user);
+        return true;
       } else {
-        console.log('[Auth] No valid session (status:', response.status, ')');
+        console.log('[Auth] ✗ No valid session (status:', response.status, ')');
         setUser(null);
+        return false;
       }
     } catch (error) {
-      console.error('[Auth] Session restore failed:', error);
+      console.error('[Auth] ✗ Session restore error:', error);
       setUser(null);
+      return false;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Restore user on provider mount (only once)
+  // Restore on mount only - use empty dependencies
   useEffect(() => {
-    console.log('[Auth] Provider mounted');
+    console.log('[Auth] Provider mounted, attempting restore...');
     restoreUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - run once on mount only
+  }, []); // CRITICAL: Empty array means run ONLY on mount
 
   const login = useCallback(
     async (phone: string, password: string) => {
-      console.log('[Auth] Login attempt:', phone);
+      console.log('[Auth] LOGIN: attempting login with', phone);
       setIsLoading(true);
+      setUser(null); // Clear previous state
 
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include', // Include/set cookies
+          credentials: 'include', // CRITICAL: Include cookies in request/response
           body: JSON.stringify({ phone, password }),
         });
 
         if (!response.ok) {
           const error = await response.json();
+          console.error('[Auth] LOGIN ERROR:', error.message);
           throw new Error(error.message || 'Login failed');
         }
 
         const data = await response.json();
-        console.log('[Auth] Login successful, user:', data.user?.id);
+        console.log('[Auth] LOGIN SUCCESS: user ', data.user?.id, ', cookies set by server');
 
         // Set user from response
         setUser(data.user);
+        console.log('[Auth] User state updated in React:', data.user?.id);
+        
         setIsLoading(false);
+        console.log('[Auth] IsLoading set to false');
 
-        // Wait for state to update, then redirect
-        await new Promise(resolve => setTimeout(resolve, 150));
-
+        // Wait a bit for state to sync
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        console.log('[Auth] Redirecting to', data.user?.role === 'ADMIN' ? 'admin' : 'dashboard');
         if (data.user?.role === 'ADMIN') {
-          console.log('[Auth] Redirecting to admin');
           router.push('/admin');
         } else {
-          console.log('[Auth] Redirecting to dashboard');
           router.push('/dashboard');
         }
       } catch (error) {
-        console.error('[Auth] Login error:', error);
+        console.error('[Auth] LOGIN FAILED:', error);
         setIsLoading(false);
         setUser(null);
         throw error;
@@ -106,20 +104,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    console.log('[Auth] Logging out...');
+    console.log('[Auth] LOGOUT: starting...');
     setIsLoading(true);
 
     try {
-      // Call logout endpoint to clear cookies
-      await fetch('/api/auth/logout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
+      console.log('[Auth] LOGOUT: API call responded with', response.status);
     } catch (error) {
-      console.error('[Auth] Logout error:', error);
+      console.error('[Auth] LOGOUT: API call failed:', error);
     } finally {
+      // Clear state regardless of API success
       setUser(null);
       setIsLoading(false);
+      console.log('[Auth] LOGOUT: redirecting to login');
       router.push('/auth/login');
     }
   }, [router]);
@@ -139,6 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     updateUser,
   };
+
+  console.log('[Auth] Current state: user=', user?.id || 'null', 'isLoading=', isLoading, 'isAuthenticated=', !!user);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
