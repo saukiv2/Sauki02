@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     bvn: '',
@@ -31,8 +32,13 @@ export default function RegisterPage() {
   const validateForm = (): boolean => {
     setError('');
 
-    if (!formData.fullName.trim()) {
-      setError('Full name is required');
+    if (!formData.firstName.trim()) {
+      setError('First name is required');
+      return false;
+    }
+
+    if (!formData.lastName.trim()) {
+      setError('Last name is required');
       return false;
     }
 
@@ -101,23 +107,25 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fullName: formData.fullName,
-          email: formData.email,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          email: formData.email.trim(),
           phone: formData.phone.replace(/\D/g, ''),
           password: formData.password,
-          bvn: formData.bvn,
+          bvn: formData.bvn.trim(),
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(data.message || data.details || 'Registration failed');
       }
 
       setSuccess(true);
       setFormData({
-        fullName: '',
+        firstName: '',
+        lastName: '',
         email: '',
         phone: '',
         bvn: '',
@@ -176,17 +184,32 @@ export default function RegisterPage() {
 
         {/* Registration Form */}
         <form onSubmit={handleRegister} className="space-y-4">
-          {/* Full Name */}
+          {/* First Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Full Name *
+              First Name *
             </label>
             <Input
               type="text"
-              name="fullName"
-              value={formData.fullName}
+              name="firstName"
+              value={formData.firstName}
               onChange={handleChange}
-              placeholder="John Doe"
+              placeholder="John"
+              required
+            />
+          </div>
+
+          {/* Last Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Last Name *
+            </label>
+            <Input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="Doe"
               required
             />
           </div>
