@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types';
 
@@ -20,54 +20,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const authCheckedRef = useRef(false);
 
   const checkAuth = useCallback(async () => {
-    // Prevent multiple simultaneous auth checks
-    if (authCheckedRef.current) {
-      console.log('[Auth] Auth already checked, skipping');
-      return;
-    }
-    
-    authCheckedRef.current = true;
-    console.log('[Auth] Starting auth check');
-
+    console.log('[Auth] checkAuth called');
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
 
-      console.log('[Auth] Token exists:', !!token, 'StoredUser exists:', !!storedUserStr);
+      console.log('[Auth] Token:', !!token, 'User:', !!storedUserStr);
 
-      if (!token) {
-        console.log('[Auth] No token found');
+      if (!token || !storedUserStr) {
+        console.log('[Auth] Clearing user');
         setUser(null);
-      } else if (storedUserStr) {
+      } else {
         try {
           const parsedUser = JSON.parse(storedUserStr);
-          console.log('[Auth] User restored:', parsedUser.id);
+          console.log('[Auth] Setting user:', parsedUser.id);
           setUser(parsedUser);
         } catch (e) {
-          console.error('[Auth] Failed to parse user:', e);
+          console.error('[Auth] Parse error:', e);
           setUser(null);
         }
-      } else {
-        console.log('[Auth] Token exists but no stored user');
-        setUser(null);
       }
     } catch (error) {
-      console.error('[Auth] Auth check error:', error);
+      console.error('[Auth] Error:', error);
       setUser(null);
     } finally {
       setIsLoading(false);
-      console.log('[Auth] Auth check complete');
     }
   }, []);
 
-  // Only check auth once on app startup
+  // Check auth on mount
   useEffect(() => {
-    console.log('[Auth] AuthProvider mounted, checking auth');
+    console.log('[Auth] Provider mounted');
     checkAuth();
-  }, []); // Empty deps - only run once
+  }, [checkAuth]);
 
   const login = useCallback(async (phone: string, password: string) => {
     setIsLoading(true);
@@ -84,24 +71,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      console.log('[Auth] Login successful, user:', data.user?.id);
+      console.log('[Auth] Login response, user:', data.user?.id);
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('accessToken', data.accessToken);
-        if (data.refreshToken) {
-          localStorage.setItem('refreshToken', data.refreshToken);
-        }
         if (data.user) {
           localStorage.setItem('user', JSON.stringify(data.user));
+          console.log('[Auth] Stored in localStorage');
         }
       }
 
       setUser(data.user);
       setIsLoading(false);
 
+      // Wait a tick then redirect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       if (data.user?.role === 'ADMIN') {
+        console.log('[Auth] Redirecting to admin');
         router.push('/admin');
       } else {
+        console.log('[Auth] Redirecting to dashboard');
         router.push('/dashboard');
       }
     } catch (error) {
@@ -126,7 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.clear();
       }
       setUser(null);
-      authCheckedRef.current = false;
       setIsLoading(false);
       router.push('/auth/login');
     }
