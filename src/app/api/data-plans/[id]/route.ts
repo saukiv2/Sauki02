@@ -1,26 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-/**
- * PATCH /api/data-plans/[id]
- * Admin: Update a data plan
- */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { requireAuth } = await import('@/lib/api-auth');
+    const { prisma } = await import('@/lib/db');
+
     const authResult = requireAuth(request, 'ADMIN');
     if (authResult instanceof NextResponse) return authResult;
 
-    const { id } = params;
     const body = await request.json();
-
     const data: Record<string, unknown> = {};
     if (body.name !== undefined) data.name = body.name.trim();
     if (body.network !== undefined) data.network = body.network.trim().toUpperCase();
@@ -29,32 +24,27 @@ export async function PATCH(
     if (body.dataGb !== undefined) data.dataGb = Number(body.dataGb);
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
 
-    const updated = await prisma.dataPlan.update({ where: { id }, data });
+    const updated = await prisma.dataPlan.update({ where: { id: params.id }, data });
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
-    console.error('Update data plan error:', error);
-    return NextResponse.json({ message: 'Failed to update data plan' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to update' }, { status: 500 });
   }
 }
 
-/**
- * DELETE /api/data-plans/[id]
- * Admin: Delete a data plan
- */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { requireAuth } = await import('@/lib/api-auth');
+    const { prisma } = await import('@/lib/db');
+
     const authResult = requireAuth(request, 'ADMIN');
     if (authResult instanceof NextResponse) return authResult;
 
-    const { id } = params;
-
-    await prisma.dataPlan.delete({ where: { id } });
-    return NextResponse.json({ success: true, message: 'Data plan deleted' });
+    await prisma.dataPlan.delete({ where: { id: params.id } });
+    return NextResponse.json({ success: true, message: 'Deleted' });
   } catch (error) {
-    console.error('Delete data plan error:', error);
-    return NextResponse.json({ message: 'Failed to delete data plan' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to delete' }, { status: 500 });
   }
 }
