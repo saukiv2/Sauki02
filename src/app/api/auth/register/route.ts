@@ -46,17 +46,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { firstName, lastName, phone, password, bvn } = validation.data;
-    const fullName = `${firstName} ${lastName}`;
+    const { fullName, email, phone, password, bvn } = validation.data;
+    const [firstName, ...lastNameParts] = fullName.trim().split(' ');
+    const lastName = lastNameParts.join(' ') || firstName;
 
-    // Check if user already exists (by phone only now)
-    const existingUser = await prisma.user.findUnique({
-      where: { phone },
+    // Check if user already exists
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { phone }],
+      },
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { message: 'User with this phone number already exists' },
+        { message: 'User with this email or phone already exists' },
         { status: 400 }
       );
     }
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
       const vaResponse = await axios.post<FlutterwaveVirtualAccountResponse>(
         `${FLW_BASE_URL}/virtual-account-numbers`,
         {
-          email: `${phone}@saukimart.local`,
+          email,
           tx_ref: vaReference,
           phonenumber: phone,
           firstname: firstName,
@@ -153,7 +156,7 @@ export async function POST(request: NextRequest) {
         const user = await tx.user.create({
           data: {
             fullName,
-            email: `${phone}@saukimart.local`,
+            email,
             phone,
             passwordHash,
             role: 'CUSTOMER',
@@ -191,14 +194,14 @@ export async function POST(request: NextRequest) {
     // STEP 5: Generate tokens
     const accessToken = generateAccessToken({
       userId,
-      email: `${phone}@saukimart.local`,
+      email,
       role: 'CUSTOMER',
     });
 
     // Update refresh token with correct userId
     const refreshTokenFinal = generateRefreshToken({
       userId,
-      email: `${phone}@saukimart.local`,
+      email,
       role: 'CUSTOMER',
     });
 
@@ -219,9 +222,9 @@ export async function POST(request: NextRequest) {
         user: {
           id: userId,
           fullName,
+          email,
           phone,
           role: 'CUSTOMER',
-          isVerified: true,
         },
         accessToken,
         wallet: {

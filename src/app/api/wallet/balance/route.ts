@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -9,12 +8,15 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
-    const userIdOrResponse = requireAuth(request);
-    if (userIdOrResponse instanceof NextResponse) {
-      return userIdOrResponse;
+    // Get user ID from middleware-injected header
+    const userId = request.headers.get('x-user-id');
+
+    if (!userId) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
-    const userId = userIdOrResponse;
 
     // Fetch wallet
     const wallet = await prisma.wallet.findUnique({
@@ -36,14 +38,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        success: true,
-        data: {
-          balanceKobo: wallet.balanceKobo,
-          balanceNaira: wallet.balanceKobo / 100,
-          currency: wallet.currency,
-          flwAccountNumber: wallet.flwAccountNumber,
-          flwBankName: wallet.flwBankName,
-        },
+        balanceKobo: wallet.balanceKobo,
+        balanceNaira: wallet.balanceKobo / 100,
+        currency: wallet.currency,
+        flwAccountNumber: wallet.flwAccountNumber,
+        flwBankName: wallet.flwBankName,
       },
       { status: 200 }
     );

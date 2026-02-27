@@ -27,11 +27,11 @@ export const passwordSchema = z
   .regex(/\d/, 'Password must contain at least one number');
 
 /**
- * Registration request validation - using phone number instead of email
+ * Registration request validation
  */
 export const registerSchema = z.object({
-  firstName: z.string().min(2, 'First name must be at least 2 characters').max(50),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
+  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100),
+  email: z.string().email('Invalid email address'),
   phone: phoneSchema,
   password: passwordSchema,
   bvn: bvnSchema,
@@ -40,10 +40,10 @@ export const registerSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 /**
- * Login request validation - using phone number instead of email
+ * Login request validation
  */
 export const loginSchema = z.object({
-  phone: phoneSchema,
+  email: z.string().email('Invalid email address'),
   password: z.string(),
 });
 

@@ -38,17 +38,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { phone, password } = validation.data;
+    const { email, password } = validation.data;
 
-    // STEP 3: Find user by phone (primary identifier now)
+    // STEP 3: Find user
     const user = await prisma.user.findUnique({
-      where: { phone },
+      where: { email },
       include: { wallet: true },
     });
 
     if (!user) {
       return NextResponse.json(
-        { message: 'Invalid phone number or password' },
+        { message: 'Invalid email or password' },
         { status: 401 }
       );
     }
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     if (!passwordValid) {
       return NextResponse.json(
-        { message: 'Invalid phone number or password' },
+        { message: 'Invalid email or password' },
         { status: 401 }
       );
     }
@@ -112,9 +112,9 @@ export async function POST(request: NextRequest) {
         user: {
           id: user.id,
           fullName: user.fullName,
+          email: user.email,
           phone: user.phone,
           role: user.role,
-          isVerified: user.isVerified,
         },
         accessToken,
         wallet: user.wallet

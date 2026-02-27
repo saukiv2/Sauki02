@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
@@ -71,7 +70,7 @@ export function verifyRefreshToken(token: string): TokenPayload | null {
  * Hash token for storage in database
  */
 export function hashToken(token: string): string {
-  return crypto
+  return require('crypto')
     .createHash('sha256')
     .update(token)
     .digest('hex');

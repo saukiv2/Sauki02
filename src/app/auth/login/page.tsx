@@ -8,7 +8,7 @@ import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,23 +23,23 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
+        throw new Error('Login failed');
       }
 
       const data = await response.json();
       
       // Store token
       localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
       
       // Redirect based on role
-      if (data.user.role === 'ADMIN') {
+      if (data.role === 'ADMIN') {
         router.push('/admin');
+      } else if (data.role === 'AGENT') {
+        router.push('/dashboard');
       } else {
         router.push('/dashboard');
       }
@@ -77,18 +77,18 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Phone Number */}
+            {/* Email */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
               </label>
               <input
-                type="tel"
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
-                placeholder="09012345678"
+                placeholder="you@example.com"
                 required
               />
             </div>
