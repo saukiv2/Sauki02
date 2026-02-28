@@ -9,12 +9,18 @@ import { useAuth } from '@/contexts/auth-context';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { user } = useAuth();
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // If already authenticated, redirect
+  if (user) {
+    router.push('/dashboard');
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,8 +28,34 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Use auth context's login method - handles everything
-      await login(phone.replace(/\D/g, ''), password);
+      // Validate inputs
+      if (!phone.trim() || pin.length !== 6) {
+        setError('Enter phone number and 6-digit PIN');
+        setLoading(false);
+        return;
+      }
+
+      // Call login API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          phone: phone.replace(/\D/g, ''),
+          pin,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      console.log('[Login] Success, redirecting to dashboard');
+      
+      // Redirect will be handled by auth context
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);
@@ -73,40 +105,34 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Password */}
+            {/* PIN */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
+              <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
+                6-Digit PIN
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  type={showPin ? 'text' : 'password'}
+                  id="pin"
+                  value={pin}
+                  onChange={(e) => {
+                    // Only allow digits, max 6
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setPin(value);
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
-                  placeholder="••••••••"
+                  placeholder="000000"
+                  maxLength={6}
                   required
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPin(!showPin)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input type="checkbox" className="rounded border-gray-300" />
-                Remember me
-              </label>
-              <a href="#" className="text-sm text-brand-blue hover:text-blue-700 font-medium">
-                Forgot password?
-              </a>
             </div>
 
             {/* Submit */}

@@ -6,8 +6,8 @@ import { Spinner } from '@/components/ui/spinner';
 
 interface WalletData {
   balance: number;
-  virtualAccountNumber?: string;
-  bankName?: string;
+  flwAccountNumber?: string;
+  flwBankName?: string;
 }
 
 export function WalletCard() {
@@ -76,19 +76,19 @@ export function WalletCard() {
       <p className="text-sm font-medium opacity-90">Wallet Balance</p>
       <p className="mt-2 text-4xl font-bold font-playfair">₦{formattedBalance}</p>
       
-      {wallet?.virtualAccountNumber && (
-        <div className="mt-4 text-sm">
-          <p className="opacity-75">Virtual Account</p>
-          <p className="font-mono mt-1">{wallet.virtualAccountNumber}</p>
-          {wallet.bankName && <p className="text-xs opacity-75 mt-1">{wallet.bankName}</p>}
+      {wallet?.flwAccountNumber && (
+        <div className="mt-5 p-4 bg-white/10 rounded-lg border border-white/20">
+          <p className="text-xs font-medium opacity-75 uppercase tracking-wide">Transfer to fund wallet</p>
+          <p className="text-lg font-mono font-bold mt-2">{wallet.flwAccountNumber}</p>
+          <p className="text-sm opacity-80 mt-1">{wallet.flwBankName || 'WEMA BANK'}</p>
         </div>
       )}
 
-      <div className="mt-4 flex gap-2">
-        <button className="flex-1 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30">
+      <div className="mt-6 flex gap-2">
+        <button className="flex-1 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30 transition-colors">
           Add Funds
         </button>
-        <button className="flex-1 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30">
+        <button className="flex-1 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30 transition-colors">
           Withdraw
         </button>
       </div>
