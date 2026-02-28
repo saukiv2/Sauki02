@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from './db';
-import { verifyAccessToken } from './auth';
 
 export interface AuthPayload {
   userId: string;
@@ -8,18 +6,16 @@ export interface AuthPayload {
 }
 
 /**
- * Extract and verify JWT from Authorization header
+ * Extract user info from middleware-injected headers
+ * Middleware validates the auth cookie and injects these headers
  */
 export function getUserFromRequest(request: NextRequest): AuthPayload | null {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) return null;
-
-    const token = authHeader.substring(7);
-    const payload = verifyAccessToken(token);
+    const userId = request.headers.get('x-user-id');
+    const role = request.headers.get('x-user-role') || 'CUSTOMER';
     
-    if (!payload?.userId) return null;
-    return { userId: payload.userId, role: payload.role || 'CUSTOMER' };
+    if (!userId) return null;
+    return { userId, role };
   } catch {
     return null;
   }
@@ -27,6 +23,8 @@ export function getUserFromRequest(request: NextRequest): AuthPayload | null {
 
 /**
  * Ensure user is authenticated and optionally has specific role
+ * Note: Middleware has already validated auth cookie and injected headers
+ * This function just checks the injected headers
  */
 export function requireAuth(request: NextRequest, requiredRole?: string): AuthPayload | NextResponse {
   const user = getUserFromRequest(request);

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { useApi } from '@/hooks/use-api';
+import { useToast } from '@/contexts/toast-context';
 
 interface Plan {
   id: string;
@@ -29,6 +30,7 @@ const PurchaseModal = ({ plan, isOpen, onClose, onSuccess }: PurchaseModalProps)
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const { post } = useApi();
+  const { success, error } = useToast();
 
   const handlePurchase = async () => {
     if (!phone || !plan || pin.length !== 6) return;
@@ -42,11 +44,16 @@ const PurchaseModal = ({ plan, isOpen, onClose, onSuccess }: PurchaseModalProps)
       });
 
       if ((response as any)?.success) {
+        success(`Data purchased successfully! ₦${plan.priceNaira} debited.`);
         onSuccess();
         onClose();
         setPhone('');
         setPin('');
+      } else {
+        error((response as any)?.message || 'Failed to purchase data');
       }
+    } catch (err: any) {
+      error(err.message || 'Error purchasing data');
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { useApi } from '@/hooks/use-api';
 import { Spinner } from '@/components/ui/spinner';
@@ -82,12 +83,12 @@ export default function WalletPage() {
         )}
 
         <div className="mt-6 flex gap-3">
-          <button className="flex-1 bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition">
+          <Link href="/wallet/fund" className="flex-1 block text-center bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition">
             + Add Funds
-          </button>
-          <button className="flex-1 bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition">
+          </Link>
+          <Link href="/wallet/withdraw" className="flex-1 block text-center bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition">
             Withdraw
-          </button>
+          </Link>
         </div>
       </Card>
 

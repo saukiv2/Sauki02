@@ -5,6 +5,8 @@ import './globals.css';
 import { Inter, Playfair_Display } from 'next/font/google';
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/contexts/auth-context';
+import { ToastProvider } from '@/contexts/toast-context';
+import { ToastContainer } from '@/components/ui/toast-container';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -63,7 +65,10 @@ export default function RootLayout({
       </head>
       <body className="font-inter antialiased">
         <AuthProvider>
-          {children}
+          <ToastProvider>
+            {children}
+            <ToastContainer />
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>
