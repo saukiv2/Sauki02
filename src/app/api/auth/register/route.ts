@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
       data: {
         firstName,
         lastName,
-        fullName: `${firstName} ${lastName}`, // Backward compatibility
         email: `accounts@saukimart.online`, // Generic email
         phone,
         passwordHash: pinHash, // Store PIN hash

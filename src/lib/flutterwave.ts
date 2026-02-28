@@ -44,9 +44,9 @@ export async function createStaticVirtualAccount(
       tx_ref: txRef,
       phonenumber: data.phone,
       is_permanent: true, // This makes it STATIC (permanent)
-      firstname: data.firstName,
+      firstname: `SAUKI ${data.firstName}`,
       lastname: data.lastName,
-      narration: `Wallet - ${data.firstName} ${data.lastName}`,
+      narration: `Wallet - SAUKI ${data.firstName} ${data.lastName}`,
       bvn: data.bvn,
     };
 

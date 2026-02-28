@@ -25,17 +25,7 @@ WHERE "firstName" IS NULL;
 -- ALTER TABLE "User" ALTER COLUMN "firstName" SET NOT NULL;
 -- ALTER TABLE "User" ALTER COLUMN "lastName" SET NOT NULL;
 
--- Make fullName nullable since we're moving to firstName/lastName
-ALTER TABLE "User" ALTER COLUMN "fullName" DROP NOT NULL;
-ALTER TABLE "Wallet" ADD COLUMN IF NOT EXISTS "flwTxRef" TEXT;
-ALTER TABLE "Wallet" ADD COLUMN IF NOT EXISTS "flwRef" TEXT;
-ALTER TABLE "Wallet" ADD COLUMN IF NOT EXISTS "flwCreatedAt" TIMESTAMP(3);
-
--- Add unique indexes for Flutterwave refs
-ALTER TABLE "Wallet" ADD CONSTRAINT "Wallet_flwOrderRef_key" UNIQUE ("flwOrderRef");
-ALTER TABLE "Wallet" ADD CONSTRAINT "Wallet_flwTxRef_key" UNIQUE ("flwTxRef");
-
--- 4. Create FlutterwaveWebhookLog table
+-- 3. Add columns to Wallet table for Flutterwave details
 CREATE TABLE "FlutterwaveWebhookLog" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "txRef" TEXT NOT NULL UNIQUE,
