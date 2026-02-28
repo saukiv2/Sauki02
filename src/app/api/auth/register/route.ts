@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         data: {
           firstName,
           lastName,
+          fullName: `${firstName} ${lastName}`,
           email,
           phone,
           passwordHash,
