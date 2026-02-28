@@ -56,8 +56,4 @@ export async function GET(request: NextRequest) {
     console.error('[AuthMe] Error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
-},
-      { status: 500 }
-    );
-  }
 }
