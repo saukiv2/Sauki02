@@ -9,7 +9,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { phone, password } = body;
 
+    console.log('[Auth/Login] POST request at:', new Date().toISOString());
+    console.log('[Auth/Login] Attempting login with phone:', phone);
+
     if (!phone || !password) {
+      console.log('[Auth/Login] ✗ Missing required fields');
       return NextResponse.json(
         { message: 'Phone and password required' },
         { status: 400 }
@@ -25,6 +29,7 @@ export async function POST(request: NextRequest) {
     const rateLimit = checkRateLimit(ip, 5, 15 * 60 * 1000);
 
     if (!rateLimit.allowed) {
+      console.log('[Auth/Login] ✗ Rate limit exceeded for IP:', ip);
       return NextResponse.json(
         { message: 'Too many login attempts' },
         { status: 429 }
@@ -36,7 +41,17 @@ export async function POST(request: NextRequest) {
       include: { wallet: true },
     });
 
-    if (!user || !await verifyPassword(password, user.passwordHash)) {
+    if (!user) {
+      console.log('[Auth/Login] ✗ User not found with phone:', phone);
+      return NextResponse.json(
+        { message: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    const passwordMatch = await verifyPassword(password, user.passwordHash);
+    if (!passwordMatch) {
+      console.log('[Auth/Login] ✗ Password incorrect for user:', user.id);
       return NextResponse.json(
         { message: 'Invalid credentials' },
         { status: 401 }
@@ -44,15 +59,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (user.isSuspended) {
+      console.log('[Auth/Login] ✗ User account suspended:', user.id);
       return NextResponse.json(
         { message: 'Account suspended' },
         { status: 403 }
       );
     }
 
+    console.log('[Auth/Login] ✓ User credentials verified:', user.id);
+
     const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
     const tokenHash = hashToken(refreshToken);
+
+    console.log('[Auth/Login] ✓ Tokens generated, storing session...');
 
     await prisma.session.deleteMany({ where: { userId: user.id, expiresAt: { lt: new Date() } } });
     await prisma.session.create({
@@ -62,6 +82,8 @@ export async function POST(request: NextRequest) {
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
+
+    console.log('[Auth/Login] ✓ Session stored, preparing response...');
 
     // Set both tokens as HTTP-only cookies (secure, not accessible by JavaScript)
     const response = NextResponse.json({
@@ -95,9 +117,10 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
+    console.log('[Auth/Login] ✓ Cookies set, login successful for user:', user.id);
     return response;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[Auth/Login] ✗ Login error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }

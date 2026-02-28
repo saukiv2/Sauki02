@@ -203,6 +203,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(refreshInterval);
   }, [user]);
 
+  // Periodic session validation - verify user is still logged in server-side
+  useEffect(() => {
+    if (!user) return; // No user, skip validation
+    
+    console.log('[Auth] Setting up session validation (every 15 minutes)');
+    
+    const validationInterval = setInterval(async () => {
+      console.log('[Auth] Validating session with server...');
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        
+        if (!response.ok) {
+          console.error('[Auth] ✗ Session validation failed - user logged out server-side');
+          // User was logged out on server, clear local state
+          setUser(null);
+          userCacheRef.current = null;
+          hasCheckedRef.current = false;
+          isSessionLockedRef.current = false;
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('[Auth] ✓ Session still valid for user:', data.user?.id);
+      } catch (error) {
+        console.error('[Auth] Session validation error:', error);
+      }
+    }, 15 * 60 * 1000); // Every 15 minutes
+    
+    return () => clearInterval(validationInterval);
+  }, [user]);
+
   const value: AuthContextType = {
     user,
     isLoading,

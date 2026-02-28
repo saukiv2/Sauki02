@@ -6,17 +6,21 @@ export const fetchCache = 'force-no-store';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[Auth/Logout] Processing logout...');
+    console.log('[Auth/Logout] Processing logout at:', new Date().toISOString());
 
     const refreshToken = request.cookies.get('sm_refresh')?.value;
+    const accessToken = request.cookies.get('sm_access')?.value;
+
+    console.log('[Auth/Logout] Refresh token present:', !!refreshToken);
+    console.log('[Auth/Logout] Access token present:', !!accessToken);
 
     if (refreshToken) {
       try {
         const { hashToken } = await import('@/lib/auth');
         const { prisma } = await import('@/lib/db');
         const tokenHash = hashToken(refreshToken);
-        await prisma.session.deleteMany({ where: { tokenHash } });
-        console.log('[Auth/Logout] Session cleaned up');
+        const deleted = await prisma.session.deleteMany({ where: { tokenHash } });
+        console.log('[Auth/Logout] ✓ Sessions deleted:', deleted.count);
       } catch (error) {
         console.error('[Auth/Logout] Error cleaning session:', error);
       }
@@ -27,22 +31,22 @@ export async function POST(request: NextRequest) {
     response.cookies.set('sm_access', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: 'lax',
       maxAge: 0,
       path: '/',
     });
     response.cookies.set('sm_refresh', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: 'lax',
       maxAge: 0,
       path: '/',
     });
 
-    console.log('[Auth/Logout] Cookies cleared');
+    console.log('[Auth/Logout] ✓ Cookies cleared, logout complete');
     return response;
   } catch (error) {
-    console.error('[Auth/Logout] Error:', error);
+    console.error('[Auth/Logout] ✗ Error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
