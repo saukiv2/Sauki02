@@ -49,21 +49,12 @@ export async function POST(request: NextRequest) {
 
     console.log('[Login] ✓ Credentials verified, creating session');
 
-    // Generate a random session token (32 bytes = 64 hex chars)
-    const sessionToken = randomBytes(32).toString('hex');
+    console.log('[Login] ✓ Credentials verified, creating auth cookie');
 
-    // Create session in database - expires in 30 days
-    await prisma.session.create({
-      data: {
-        userId: user.id,
-        sessionToken,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      },
-    });
+    // Create simple auth cookie with user ID (base64 encoded)
+    const authData = Buffer.from(JSON.stringify({ userId: user.id, loginTime: Date.now() })).toString('base64');
 
-    console.log('[Login] ✓ Session created, setting cookie');
-
-    // Create response with session token cookie
+    // Create response
     const response = NextResponse.json({
       message: 'Login successful',
       user: {
@@ -75,12 +66,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set session cookie (7 days for cookie expiry, 30 days for server session)
-    response.cookies.set('auth_session', sessionToken, {
+    // Set simple auth cookie
+    response.cookies.set('auth', authData, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: 30 * 24 * 60 * 60, // 30 days
       path: '/',
     });
 

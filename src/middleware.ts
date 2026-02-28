@@ -19,52 +19,61 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedRoute) {
     try {
-      // Get session token from cookie
-      const sessionToken = request.cookies.get('auth_session')?.value;
+      // Get auth cookie
+      const authCookie = request.cookies.get('auth')?.value;
 
-      console.log(`[Middleware] Checking session for ${pathname}`);
+      console.log(`[Middleware] Checking auth for ${pathname}`);
 
-      if (!sessionToken) {
-        console.log(`[Middleware] ✗ No session token for ${pathname}`);
+      if (!authCookie) {
+        console.log(`[Middleware] ✗ No auth cookie for ${pathname}`);
         return NextResponse.json(
           { message: 'Not authenticated' },
           { status: 401 }
         );
       }
 
-      // Import database
-      const { prisma } = await import('@/lib/db');
+      // Decode cookie to get user ID
+      let userId;
+      try {
+        const decoded = JSON.parse(Buffer.from(authCookie, 'base64').toString());
+        userId = decoded.userId;
+      } catch (e) {
+        console.log(`[Middleware] ✗ Invalid cookie for ${pathname}`);
+        return NextResponse.json(
+          { message: 'Invalid auth' },
+          { status: 401 }
+        );
+      }
 
-      // Look up session in database
-      const session = await prisma.session.findUnique({
-        where: { sessionToken },
-        include: { user: true },
+      // Import database and verify user
+      const { prisma } = await import('@/lib/db');
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
       });
 
-      if (!session) {
-        console.log(`[Middleware] ✗ Session not found for ${pathname}`);
+      if (!user) {
+        console.log(`[Middleware] ✗ User not found for ${pathname}`);
         return NextResponse.json(
-          { message: 'Session not found' },
+          { message: 'User not found' },
           { status: 401 }
         );
       }
 
-      // Check if session expired
-      if (new Date() > session.expiresAt) {
-        console.log(`[Middleware] ✗ Session expired for ${pathname}`);
+      if (user.isSuspended) {
+        console.log(`[Middleware] ✗ User suspended for ${pathname}`);
         return NextResponse.json(
-          { message: 'Session expired' },
-          { status: 401 }
+          { message: 'User suspended' },
+          { status: 403 }
         );
       }
 
-      console.log(`[Middleware] ✓ Session valid for user ${session.userId} accessing ${pathname}`);
+      console.log(`[Middleware] ✓ Auth valid for user ${userId} accessing ${pathname}`);
 
       // Add user info to headers for downstream routes
       const response = NextResponse.next();
-      response.headers.set('x-user-id', session.userId);
-      response.headers.set('x-user-role', session.user.role);
-      response.headers.set('x-user-email', session.user.email);
+      response.headers.set('x-user-id', userId);
+      response.headers.set('x-user-role', user.role);
+      response.headers.set('x-user-email', user.email);
 
       return response;
     } catch (error) {
