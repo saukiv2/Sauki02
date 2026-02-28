@@ -7,17 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/contexts/toast-context';
-import { useUser } from '@/hooks/use-auth';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 
-interface BankAccount {
-  bankCode: string;
-  accountNumber: string;
-  accountName: string;
-}
-
 export default function WithdrawPage() {
-  const user = useUser();
   const { success, error } = useToast();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'amount' | 'bank' | 'pin'>('amount');

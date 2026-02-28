@@ -16,6 +16,7 @@
     "prisma:seed": "node --require tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@heroicons/react": "^2.1.1",
     "@prisma/client": "^5.8.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/uuid": "^9.0.7",

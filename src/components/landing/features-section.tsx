@@ -1,40 +1,45 @@
 'use client';
 
-import Link from 'next/link';
-import { Signal, Zap, Package } from 'lucide-react';
+import {
+  SignalIcon,
+  BoltIcon,
+  CubeTransparentIcon,
+} from '@heroicons/react/24/outline';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export function FeaturesSection() {
   const services = [
     {
-      icon: Signal,
+      icon: SignalIcon,
       title: 'Mobile Data',
-      description: 'Get instant data for MTN, Glo, Airtel and more networks at the best rates.',
-      cta: 'Learn more',
+      description:
+        'Get instant data for MTN, Glo, Airtel and more networks at the best rates.',
     },
     {
-      icon: Zap,
+      icon: BoltIcon,
       title: 'Electricity Bills',
-      description: 'Pay your electricity bill safely and securely. No hassles, no waiting.',
-      cta: 'Learn more',
+      description:
+        'Pay your electricity bill safely and securely. No hassles, no waiting.',
     },
     {
-      icon: Package,
+      icon: CubeTransparentIcon,
       title: 'Gadgets Store',
-      description: 'Browse and shop the latest phones, laptops, and accessories with ease.',
-      cta: 'Learn more',
+      description:
+        'Browse and shop the latest phones, laptops, and accessories with ease.',
     },
   ];
 
   return (
-    <section id="services" className="relative py-20 px-6">
+    <section id="services" className="relative py-20 px-6 bg-white">
       <div className="max-w-7xl mx-auto">
         {/* Section heading */}
         <div className="text-center mb-16">
-          <h2 className="font-playfair text-4xl sm:text-5xl font-bold text-black mb-4">
+          <h2 className="font-inter text-4xl sm:text-5xl font-bold text-black mb-4">
             Everything You Need
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            From mobile data to electricity bills to premium gadgets — all in one place.
+            From mobile data to electricity bills to premium gadgets — all in
+            one place.
           </p>
         </div>
 
@@ -43,25 +48,21 @@ export function FeaturesSection() {
           {services.map((service) => {
             const Icon = service.icon;
             return (
-              <div
-                key={service.title}
-                className="group p-8 rounded-2xl bg-white border border-gray-200 hover:border-brand-blue hover:shadow-lg transition-all duration-300"
-              >
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-brand-blue group-hover:text-white transition-all">
-                  <Icon size={24} className="text-brand-blue group-hover:text-white" />
-                </div>
-
-                <h3 className="text-2xl font-bold text-black mb-3">{service.title}</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">{service.description}</p>
-
-                <Link
-                  href="#"
-                  className="inline-flex items-center text-brand-blue hover:text-blue-700 font-semibold group/link"
-                >
-                  {service.cta}
-                  <span className="ml-2 transition-transform group-hover/link:translate-x-1">→</span>
-                </Link>
-              </div>
+              <Card key={service.title} className="cursor-pointer">
+                <CardHeader>
+                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6">
+                    <Icon className="h-6 w-6 text-blue-600" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <h3 className="text-2xl font-bold text-black mb-3">
+                    {service.title}
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {service.description}
+                  </p>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

@@ -19,20 +19,20 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    'font-inter font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+    'font-inter font-medium rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-lg';
 
   const variants = {
-    primary: 'bg-brand-blue text-white hover:bg-opacity-90',
-    secondary: 'bg-gray-200 text-brand-black hover:bg-gray-300',
-    outline: 'border-2 border-brand-blue text-brand-blue hover:bg-blue-50',
-    ghost: 'text-brand-blue hover:bg-blue-50',
+    primary: 'bg-blue-600 text-white hover:bg-blue-700',
+    secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+    outline: 'border border-blue-600 text-blue-600 hover:bg-blue-50',
+    ghost: 'text-blue-600 hover:bg-blue-50',
     danger: 'bg-red-600 text-white hover:bg-red-700',
   };
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2.5 text-base',
-    lg: 'px-6 py-3 text-lg',
+    sm: 'px-4 py-2 text-sm',
+    md: 'px-6 py-3 text-base',
+    lg: 'px-8 py-4 text-lg',
   };
 
   const combinedClassName = `${baseStyles} ${variants[variant]} ${sizes[size]} ${className || ''}`;

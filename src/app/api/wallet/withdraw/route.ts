@@ -78,15 +78,15 @@ export async function POST(request: NextRequest) {
     const amountKobo = Math.round(amount * 100);
 
     // Check balance
-    if (wallet.balance < amountKobo) {
+    if (wallet.balanceKobo < amountKobo) {
       return NextResponse.json(
         { message: 'Insufficient balance' },
         { status: 400 }
       );
     }
 
-    // Verify PIN
-    const pinMatch = await bcrypt.compare(pin, wallet.pin);
+    // Verify PIN against user's PIN hash
+    const pinMatch = await bcrypt.default.compare(pin, wallet.user.passwordHash);
     if (!pinMatch) {
       return NextResponse.json(
         { message: 'Invalid PIN' },
@@ -96,13 +96,15 @@ export async function POST(request: NextRequest) {
 
     // Create withdrawal transaction
     const txnId = uuidv4();
-    const transaction = await prisma.transaction.create({
+    const transaction = await prisma.walletTransaction.create({
       data: {
-        id: txnId,
-        userId,
-        type: 'WITHDRAW',
-        amount: amountKobo,
-        status: 'INITIATED', // Will be updated to SUCCESS after processing
+        walletId: wallet.id,
+        type: 'DEBIT',
+        amountKobo,
+        balanceBefore: wallet.balanceKobo,
+        balanceAfter: wallet.balanceKobo - amountKobo,
+        ref: txnId,
+        status: 'PENDING', // Will be updated to SUCCESS after processing
         metadata: {
           bankCode,
           accountNumber,
@@ -117,7 +119,7 @@ export async function POST(request: NextRequest) {
     await prisma.wallet.update({
       where: { userId },
       data: {
-        balance: {
+        balanceKobo: {
           decrement: amountKobo,
         },
       },

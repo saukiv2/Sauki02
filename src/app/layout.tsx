@@ -1,28 +1,20 @@
-// Move existing app/layout.tsx to src/app/layout.tsx
-// This will be overwritten below - moving it to src structure
-
 import './globals.css';
-import { Inter, Playfair_Display } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/contexts/auth-context';
 import { ToastProvider } from '@/contexts/toast-context';
 import { ToastContainer } from '@/components/ui/toast-container';
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
-  display: 'swap'
-});
-
-const playfair = Playfair_Display({ 
-  subsets: ['latin'],
-  variable: '--font-playfair',
-  display: 'swap'
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
   title: 'SaukiMart — Buy Data, Pay Bills & Shop',
-  description: 'Nigeria\'s most trusted digital services platform. Buy mobile data, pay electricity bills, and shop for gadgets from one wallet.',
+  description:
+    "Nigeria's most trusted digital services platform. Buy mobile data, pay electricity bills, and shop for gadgets from one wallet.",
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -37,11 +29,11 @@ export const metadata: Metadata = {
     url: 'https://www.saukimart.online',
     siteName: 'SaukiMart',
     images: [
-      { 
-        url: '/og_image.png', 
-        width: 1200, 
-        height: 630, 
-        alt: 'SaukiMart' 
+      {
+        url: '/og_image.png',
+        width: 1200,
+        height: 630,
+        alt: 'SaukiMart',
       },
     ],
     locale: 'en_NG',
@@ -56,12 +48,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable}`}>
       <head>
-        <meta name="theme-color" content="#0A7AFF" />
+        <meta name="theme-color" content="#F9F9F9" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="default"
+        />
       </head>
       <body className="font-inter antialiased">
         <AuthProvider>

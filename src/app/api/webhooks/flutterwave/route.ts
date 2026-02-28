@@ -69,13 +69,17 @@ export async function POST(request: NextRequest) {
 
     console.log('[Webhook] ✓ Found wallet for user:', wallet.userId);
 
-    // Check if this webhook was already processed
-    const existingLog = await prisma.flutterwaveWebhookLog.findUnique({
-      where: { txRef },
+    // Check if this wallet has already received credit for this specific transaction
+    const existingTxn = await prisma.walletTransaction.findFirst({
+      where: {
+        walletId: wallet.id,
+        ref: flwRef,
+        status: 'SUCCESS',
+      },
     });
 
-    if (existingLog?.processed) {
-      console.log('[Webhook] Webhook already processed for tx_ref:', txRef);
+    if (existingTxn) {
+      console.log('[Webhook] Webhook already processed for flw_ref:', flwRef);
       return NextResponse.json({ message: 'OK' }, { status: 200 });
     }
 
@@ -111,25 +115,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log('[Webhook] ✓ Transaction recorded');
-
-    // Log webhook
-    await prisma.flutterwaveWebhookLog.create({
-      data: {
-        txRef,
-        flwRef,
-        userId: wallet.userId,
-        walletId: wallet.id,
-        amount: amountKobo,
-        status: 'successful',
-        eventType: event,
-        rawPayload: payload,
-        processed: true,
-        processedAt: new Date(),
-      },
-    });
-
-    console.log('[Webhook] ✓ Webhook processed successfully');
+    console.log('[Webhook] ✓ Transaction recorded and webhook processed successfully');
     return NextResponse.json({ message: 'OK' }, { status: 200 });
   } catch (error) {
     console.error('[Webhook] Error:', error);

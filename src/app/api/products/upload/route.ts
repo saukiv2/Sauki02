@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
     const { prisma } = await import('@/lib/db');
     const { writeFile, mkdir } = await import('fs/promises');
     const { join } = await import('path');
-    const sharp = await import('sharp');
+    const sharpModule = await import('sharp');
+    const sharp = sharpModule.default;
     const { v4: uuidv4 } = await import('uuid');
     const { z } = await import('zod');
     
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: 'Validation error', errors: error.errors },
+        { message: 'Validation error', errors: (error as z.ZodError).errors },
         { status: 400 }
       );
     }

@@ -54,20 +54,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get wallet to create transaction record
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId },
+    });
+
+    if (!wallet) {
+      return NextResponse.json(
+        { message: 'Wallet not found' },
+        { status: 404 }
+      );
+    }
+
     // Create transaction record with PENDING status
-    const transaction = await prisma.transaction.create({
+    const transaction = await prisma.walletTransaction.create({
       data: {
-        id: uuidv4(),
-        userId,
-        type: 'FUND',
-        amount: Math.round(amount * 100), // Store in kobo
+        walletId: wallet.id,
+        type: 'CREDIT',
+        amountKobo: Math.round(amount * 100), // Store in kobo
+        balanceBefore: wallet.balanceKobo,
+        balanceAfter: wallet.balanceKobo, // Will be updated when approved
+        ref: uuidv4(),
+        description: `Fund request - ₦${amount} (Ref: ${transactionRef})`,
         status: 'PENDING',
         metadata: {
           transactionRef,
           method: 'MANUAL_TRANSFER',
           fundType: 'CUSTOMER_FUND',
         },
-        description: `Fund wallet - ₦${amount}`,
       },
     });
 
@@ -106,10 +120,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const fundRequests = await prisma.transaction.findMany({
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId },
+    });
+
+    if (!wallet) {
+      return NextResponse.json(
+        { message: 'Wallet not found' },
+        { status: 404 }
+      );
+    }
+
+    const fundRequests = await prisma.walletTransaction.findMany({
       where: {
-        userId,
-        type: 'FUND',
+        walletId: wallet.id,
+        type: 'CREDIT',
+        metadata: {
+          path: ['method'],
+          equals: 'MANUAL_TRANSFER',
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 20,

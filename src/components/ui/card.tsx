@@ -9,7 +9,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Card({ children, className, ...props }: CardProps) {
   return (
     <div
-      className={`rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md ${
+      className={`rounded-2xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${
         className || ''
       }`}
       {...props}
@@ -19,7 +19,13 @@ export function Card({ children, className, ...props }: CardProps) {
   );
 }
 
-export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
+export function CardHeader({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`mb-4 border-b border-gray-100 pb-4 ${className || ''}`}>
       {children}
@@ -27,13 +33,25 @@ export function CardHeader({ children, className }: { children: React.ReactNode;
   );
 }
 
-export function CardContent({ children, className }: { children: React.ReactNode; className?: string }) {
+export function CardContent({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return <div className={className}>{children}</div>;
 }
 
-export function CardFooter({ children, className }: { children: React.ReactNode; className?: string }) {
+export function CardFooter({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={`border-t border-gray-100 pt-4 ${className || ''}`}>
+    <div className={`mt-4 border-t border-gray-100 pt-4 ${className || ''}`}>
       {children}
     </div>
   );

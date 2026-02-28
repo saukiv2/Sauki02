@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/db');
+    const { requireAuth } = await import('@/lib/api-auth');
+    
     const authResult = requireAuth(request, 'ADMIN');
     if (authResult instanceof NextResponse) return authResult;
 

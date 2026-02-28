@@ -105,6 +105,13 @@ export async function POST(request: NextRequest) {
         role: 'CUSTOMER',
         isVerified: false,
       },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+      },
     });
 
     console.log('[Register] ✓ User created:', newUser.id);

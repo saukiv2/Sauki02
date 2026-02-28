@@ -1,6 +1,13 @@
 'use client';
 
 import React from 'react';
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  InformationCircleIcon,
+  ExclamationTriangleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/solid';
 
 interface ToastProps {
   type: 'success' | 'error' | 'info' | 'warning';
@@ -10,12 +17,30 @@ interface ToastProps {
   duration?: number;
 }
 
+const icons = {
+  success: <CheckCircleIcon className="h-6 w-6 text-green-400" />,
+  error: <XCircleIcon className="h-6 w-6 text-red-400" />,
+  info: <InformationCircleIcon className="h-6 w-6 text-blue-400" />,
+  warning: <ExclamationTriangleIcon className="h-6 w-6 text-yellow-400" />,
+};
+
+function CloseButton({ onClick }: { onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-full p-1 text-gray-400 hover:bg-gray-700"
+    >
+      <XMarkIcon className="h-5 w-5" />
+    </button>
+  );
+}
+
 export function Toast({
   type,
   message,
   onClose,
   autoClose = true,
-  duration = 3000,
+  duration = 5000,
 }: ToastProps) {
   React.useEffect(() => {
     if (autoClose && onClose) {
@@ -25,19 +50,16 @@ export function Toast({
     return undefined;
   }, [autoClose, duration, onClose]);
 
-  const typeStyles = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-  };
+  const Icon = icons[type];
 
   return (
     <div
-      className={`rounded-lg border-2 p-4 font-inter ${typeStyles[type]}`}
+      className="pointer-events-auto flex w-full max-w-sm items-center space-x-4 rounded-xl bg-gray-900/90 p-4 font-inter text-white shadow-lg backdrop-blur-sm"
       role="alert"
     >
-      {message}
+      <div className="flex-shrink-0">{Icon}</div>
+      <div className="flex-1 text-sm font-medium">{message}</div>
+      {onClose && <CloseButton onClick={onClose} />}
     </div>
   );
 }

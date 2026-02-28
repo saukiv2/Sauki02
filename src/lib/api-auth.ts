@@ -47,6 +47,7 @@ export async function getFullUserFromRequest(request: NextRequest) {
   const payload = getUserFromRequest(request);
   if (!payload) return null;
   try {
+    const { prisma } = await import('@/lib/db');
     return await prisma.user.findUnique({ where: { id: payload.userId } });
   } catch {
     return null;
