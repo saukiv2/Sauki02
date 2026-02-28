@@ -87,8 +87,7 @@ model User {
 model Session {
   id                String @id @default(cuid())
   userId            String
-  tokenHash         String
-  deviceInfo        String?
+  sessionToken      String @unique
   expiresAt         DateTime
   createdAt         DateTime @default(now())
 
@@ -96,6 +95,7 @@ model Session {
   user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([sessionToken])
   @@index([expiresAt])
 }
 

@@ -24,43 +24,33 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const user = useUser();
   const { logout } = useAuthMethods();
   const { isAuthenticated, isLoading } = useAuth();
+  const redirectedRef = useRef(false);
 
-  // Track if we've already decided to redirect (prevent multiple redirects)
-  const hasRedirectedRef = useRef(false);
-
-  // Only redirect if not authenticated AFTER loading is complete
   useEffect(() => {
-    console.log('[AppLayout] State check: isLoading=', isLoading, 'isAuth=', isAuthenticated, 'user=', user?.id || 'null');
+    console.log('[AppLayout] State: loading=', isLoading, 'authenticated=', isAuthenticated);
 
-    // Still loading - don't do anything
+    // Still loading
     if (isLoading) {
-      console.log('[AppLayout] ⏳ Still loading, waiting...');
-      hasRedirectedRef.current = false; // Reset redirect flag while loading
+      console.log('[AppLayout] Still loading');
+      redirectedRef.current = false;
       return;
     }
 
-    // Loading complete
-    console.log('[AppLayout] ✓ Loading complete. isAuthenticated=', isAuthenticated);
-
-    // If authenticated, we're good
+    // Authenticated, good
     if (isAuthenticated) {
-      console.log('[AppLayout] ✓ User authenticated as:', user?.id);
-      hasRedirectedRef.current = false;
+      console.log('[AppLayout] User authenticated:', user?.id);
+      redirectedRef.current = false;
       return;
     }
 
-    // Not authenticated after loading completed - redirect ONCE
-    if (!hasRedirectedRef.current) {
-      console.log('[AppLayout] ✗ Not authenticated, redirecting to login (ONCE)');
-      hasRedirectedRef.current = true;
+    // Not authenticated, redirect once
+    if (!redirectedRef.current) {
+      console.log('[AppLayout] Not authenticated, redirecting to login');
+      redirectedRef.current = true;
       router.push('/auth/login');
-      return;
     }
-
-    console.log('[AppLayout] Already redirected, skipping duplicate redirect');
   }, [isLoading, isAuthenticated, router, user?.id]);
 
-  // While loading OR not authenticated (initial state), show spinner
   if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

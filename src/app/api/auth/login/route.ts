@@ -9,83 +9,61 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { phone, password } = body;
 
-    console.log('[Auth/Login] POST request at:', new Date().toISOString());
-    console.log('[Auth/Login] Attempting login with phone:', phone);
+    console.log('[Login] Attempting login with phone:', phone);
 
+    // Validate input
     if (!phone || !password) {
-      console.log('[Auth/Login] ✗ Missing required fields');
       return NextResponse.json(
         { message: 'Phone and password required' },
         { status: 400 }
       );
     }
 
-    // Lazy import - avoid loading at build time
+    // Import database and auth utilities
     const { prisma } = await import('@/lib/db');
-    const { verifyPassword, generateAccessToken, generateRefreshToken, hashToken } = await import('@/lib/auth');
-    const { checkRateLimit } = await import('@/lib/rate-limit');
+    const { verifyPassword } = await import('@/lib/auth');
+    const { randomBytes } = await import('crypto');
 
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const rateLimit = checkRateLimit(ip, 5, 15 * 60 * 1000);
-
-    if (!rateLimit.allowed) {
-      console.log('[Auth/Login] ✗ Rate limit exceeded for IP:', ip);
-      return NextResponse.json(
-        { message: 'Too many login attempts' },
-        { status: 429 }
-      );
-    }
-
+    // Find user by phone
     const user = await prisma.user.findUnique({
       where: { phone },
       include: { wallet: true },
     });
 
     if (!user) {
-      console.log('[Auth/Login] ✗ User not found with phone:', phone);
-      return NextResponse.json(
-        { message: 'Invalid credentials' },
-        { status: 401 }
-      );
+      console.log('[Login] User not found:', phone);
+      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
+    // Verify password
     const passwordMatch = await verifyPassword(password, user.passwordHash);
     if (!passwordMatch) {
-      console.log('[Auth/Login] ✗ Password incorrect for user:', user.id);
-      return NextResponse.json(
-        { message: 'Invalid credentials' },
-        { status: 401 }
-      );
+      console.log('[Login] Password mismatch for user:', user.id);
+      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
     if (user.isSuspended) {
-      console.log('[Auth/Login] ✗ User account suspended:', user.id);
-      return NextResponse.json(
-        { message: 'Account suspended' },
-        { status: 403 }
-      );
+      console.log('[Login] User suspended:', user.id);
+      return NextResponse.json({ message: 'Account suspended' }, { status: 403 });
     }
 
-    console.log('[Auth/Login] ✓ User credentials verified:', user.id);
+    console.log('[Login] ✓ Credentials verified, creating session');
 
-    const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
-    const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
-    const tokenHash = hashToken(refreshToken);
+    // Generate a random session token (32 bytes = 64 hex chars)
+    const sessionToken = randomBytes(32).toString('hex');
 
-    console.log('[Auth/Login] ✓ Tokens generated, storing session...');
-
-    await prisma.session.deleteMany({ where: { userId: user.id, expiresAt: { lt: new Date() } } });
+    // Create session in database - expires in 30 days
     await prisma.session.create({
       data: {
         userId: user.id,
-        tokenHash,
+        sessionToken,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
 
-    console.log('[Auth/Login] ✓ Session stored, preparing response...');
+    console.log('[Login] ✓ Session created, setting cookie');
 
-    // Set both tokens as HTTP-only cookies (secure, not accessible by JavaScript)
+    // Create response with session token cookie
     const response = NextResponse.json({
       message: 'Login successful',
       user: {
@@ -95,31 +73,21 @@ export async function POST(request: NextRequest) {
         phone: user.phone,
         role: user.role,
       },
-      wallet: user.wallet ? { balanceKobo: user.wallet.balanceKobo } : null,
     });
 
-    // Set access token (short-lived, 1 hour)
-    response.cookies.set('sm_access', accessToken, {
+    // Set session cookie (7 days for cookie expiry, 30 days for server session)
+    response.cookies.set('auth_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60,
+      maxAge: 7 * 24 * 60 * 60,
       path: '/',
     });
 
-    // Set refresh token (long-lived, 30 days)
-    response.cookies.set('sm_refresh', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60,
-      path: '/',
-    });
-
-    console.log('[Auth/Login] ✓ Cookies set, login successful for user:', user.id);
+    console.log('[Login] ✓ Login successful for user:', user.id);
     return response;
   } catch (error) {
-    console.error('[Auth/Login] ✗ Login error:', error);
+    console.error('[Login] Error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }

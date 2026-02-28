@@ -1,25 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-
-interface TokenPayload {
-  userId: string;
-  role: string;
-  email: string;
-}
-
-function verifyAuth(token: string): TokenPayload | null {
-  try {
-    const secret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
-    console.log('[Middleware] Using JWT_SECRET:', secret ? '**SET**' : '**NOT SET - USING FALLBACK**');
-    const payload = jwt.verify(token, secret) as TokenPayload;
-    console.log('[Middleware] ✓ Token verified successfully');
-    return payload;
-  } catch (error: any) {
-    console.error('[Middleware] ✗ Token verification failed:', error.message);
-    console.log('[Middleware] Token (first 50 chars):', token.substring(0, 50) + '...');
-    return null;
-  }
-}
 
 export async function middleware(request: NextRequest) {
   // List of protected API routes that require authentication
@@ -36,47 +15,60 @@ export async function middleware(request: NextRequest) {
   ];
 
   const pathname = request.nextUrl.pathname;
-
-  // Check if this is a protected route
   const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path));
 
   if (isProtectedRoute) {
     try {
-      // Get access token from HTTP-only cookie
-      const accessToken = request.cookies.get('sm_access')?.value;
+      // Get session token from cookie
+      const sessionToken = request.cookies.get('auth_session')?.value;
 
-      console.log(`[Middleware] Checking auth for ${pathname}`);
-      console.log(`[Middleware] Access token present: ${!!accessToken}`);
-      
-      if (!accessToken) {
-        console.log(`[Middleware] ✗ Missing auth token for ${pathname}`);
+      console.log(`[Middleware] Checking session for ${pathname}`);
+
+      if (!sessionToken) {
+        console.log(`[Middleware] ✗ No session token for ${pathname}`);
         return NextResponse.json(
-          { message: 'Missing authentication token' },
+          { message: 'Not authenticated' },
           { status: 401 }
         );
       }
 
-      const payload = verifyAuth(accessToken);
+      // Import database
+      const { prisma } = await import('@/lib/db');
 
-      if (!payload || !payload.userId) {
-        console.log(`[Middleware] ✗ Invalid token for ${pathname}`);
+      // Look up session in database
+      const session = await prisma.session.findUnique({
+        where: { sessionToken },
+        include: { user: true },
+      });
+
+      if (!session) {
+        console.log(`[Middleware] ✗ Session not found for ${pathname}`);
         return NextResponse.json(
-          { message: 'Invalid or expired token' },
+          { message: 'Session not found' },
           { status: 401 }
         );
       }
 
-      console.log(`[Middleware] ✓ Token valid for user ${payload.userId} accessing ${pathname}`);
+      // Check if session expired
+      if (new Date() > session.expiresAt) {
+        console.log(`[Middleware] ✗ Session expired for ${pathname}`);
+        return NextResponse.json(
+          { message: 'Session expired' },
+          { status: 401 }
+        );
+      }
 
-      // Clone request and add user info to headers for downstream handlers
+      console.log(`[Middleware] ✓ Session valid for user ${session.userId} accessing ${pathname}`);
+
+      // Add user info to headers for downstream routes
       const response = NextResponse.next();
-      response.headers.set('x-user-id', payload.userId);
-      response.headers.set('x-user-role', payload.role || 'CUSTOMER');
-      response.headers.set('x-user-email', payload.email);
+      response.headers.set('x-user-id', session.userId);
+      response.headers.set('x-user-role', session.user.role);
+      response.headers.set('x-user-email', session.user.email);
 
       return response;
     } catch (error) {
-      console.error(`[Middleware] Auth validation error for ${pathname}:`, error);
+      console.error(`[Middleware] Error checking session:`, error);
       return NextResponse.json(
         { message: 'Authentication failed' },
         { status: 401 }
@@ -89,7 +81,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/api/:path*',
-  ],
+  matcher: ['/api/:path*'],
 };

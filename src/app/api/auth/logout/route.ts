@@ -6,36 +6,20 @@ export const fetchCache = 'force-no-store';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[Auth/Logout] Processing logout at:', new Date().toISOString());
+    console.log('[Logout] Processing logout');
 
-    const refreshToken = request.cookies.get('sm_refresh')?.value;
-    const accessToken = request.cookies.get('sm_access')?.value;
+    const sessionToken = request.cookies.get('auth_session')?.value;
 
-    console.log('[Auth/Logout] Refresh token present:', !!refreshToken);
-    console.log('[Auth/Logout] Access token present:', !!accessToken);
-
-    if (refreshToken) {
-      try {
-        const { hashToken } = await import('@/lib/auth');
-        const { prisma } = await import('@/lib/db');
-        const tokenHash = hashToken(refreshToken);
-        const deleted = await prisma.session.deleteMany({ where: { tokenHash } });
-        console.log('[Auth/Logout] ✓ Sessions deleted:', deleted.count);
-      } catch (error) {
-        console.error('[Auth/Logout] Error cleaning session:', error);
-      }
+    if (sessionToken) {
+      // Delete session from database
+      const { prisma } = await import('@/lib/db');
+      await prisma.session.deleteMany({ where: { sessionToken } });
+      console.log('[Logout] ✓ Session deleted');
     }
 
-    // Clear both cookies properly with maxAge=0
+    // Clear the cookie
     const response = NextResponse.json({ message: 'Logout successful' });
-    response.cookies.set('sm_access', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    });
-    response.cookies.set('sm_refresh', '', {
+    response.cookies.set('auth_session', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -43,10 +27,10 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    console.log('[Auth/Logout] ✓ Cookies cleared, logout complete');
+    console.log('[Logout] ✓ Cookie cleared');
     return response;
   } catch (error) {
-    console.error('[Auth/Logout] ✗ Error:', error);
+    console.error('[Logout] Error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }

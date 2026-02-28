@@ -19,30 +19,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Cache user to survive provider re-renders
-  const userCacheRef = React.useRef<User | null>(null);
-  const hasCheckedRef = React.useRef(false);
-  // Lock prevents restore overwriting a successful login
-  const isSessionLockedRef = React.useRef(false);
 
-  const restoreUser = useCallback(async () => {
-    // If session is locked (user just logged in), don't interfere
-    if (isSessionLockedRef.current) {
-      console.log('[Auth] Session locked - user just logged in, skipping restore');
-      setIsLoading(false);
-      return;
-    }
-
-    // If we already have user cached, restore immediately without API call
-    if (userCacheRef.current) {
-      console.log('[Auth] ✓ Using cached user:', userCacheRef.current.id);
-      setUser(userCacheRef.current);
-      setIsLoading(false);
-      return true;
-    }
-
-    console.log('[Auth] Attempting to restore session from API...');
+  // Restore session on app mount
+  const restoreSession = useCallback(async () => {
+    console.log('[Auth] Attempting to restore session from /api/auth/me');
     try {
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
@@ -51,45 +31,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[Auth] ✓ Session restored from API for user:', data.user?.id);
+        console.log('[Auth] ✓ Session restored, user:', data.user?.id);
         setUser(data.user);
-        userCacheRef.current = data.user;
-        return true;
       } else {
-        console.log('[Auth] ✗ No valid session from API (status:', response.status, ')');
+        console.log('[Auth] ✗ Session restore failed with status:', response.status);
         setUser(null);
-        userCacheRef.current = null;
-        return false;
       }
     } catch (error) {
-      console.error('[Auth] ✗ Session restore error:', error);
+      console.error('[Auth] Session restore error:', error);
       setUser(null);
-      userCacheRef.current = null;
-      return false;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Check auth only once on app startup
+  // Restore session on mount only, once
   useEffect(() => {
-    if (hasCheckedRef.current) {
-      console.log('[Auth] Already checked, skipping restore');
-      return;
-    }
-    hasCheckedRef.current = true;
-    console.log('[Auth] App starting up, checking auth session...');
-    restoreUser();
+    console.log('[Auth] Provider mounted, restoring session');
+    restoreSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = useCallback(
     async (phone: string, password: string) => {
-      console.log('[Auth] LOGIN: attempting with', phone);
+      console.log('[Auth] Login attempt with phone:', phone);
       setIsLoading(true);
-      setUser(null);
-      userCacheRef.current = null;
-      isSessionLockedRef.current = false; // Unlock for fresh login
 
       try {
         const response = await fetch('/api/auth/login', {
@@ -101,40 +67,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!response.ok) {
           const error = await response.json();
-          console.error('[Auth] LOGIN ERROR:', error.message);
           throw new Error(error.message || 'Login failed');
         }
 
         const data = await response.json();
-        console.log('[Auth] LOGIN SUCCESS: user', data.user?.id);
-
-        // Lock the session to prevent restore from interfering
-        isSessionLockedRef.current = true;
-        console.log('[Auth] Session locked to protect login state');
-
-        // Set user in BOTH state and cache
+        console.log('[Auth] ✓ Login successful, user:', data.user?.id);
         setUser(data.user);
-        userCacheRef.current = data.user;
         setIsLoading(false);
-        console.log('[Auth] User cached, state set, waiting for sync...');
 
-        // Wait for React state to settle
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Unlock session after state is stable
-        isSessionLockedRef.current = false;
-        console.log('[Auth] Session unlocked, redirecting to dashboard...');
-        if (data.user?.role === 'ADMIN') {
-          router.push('/admin');
-        } else {
-          router.push('/dashboard');
-        }
+        // Wait a moment for state to sync
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        console.log('[Auth] Redirecting to dashboard');
+        router.push(data.user?.role === 'ADMIN' ? '/admin' : '/dashboard');
       } catch (error) {
-        console.error('[Auth] LOGIN FAILED:', error);
+        console.error('[Auth] Login error:', error);
         setIsLoading(false);
         setUser(null);
-        userCacheRef.current = null;
-        isSessionLockedRef.current = false;
         throw error;
       }
     },
@@ -142,101 +91,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    console.log('[Auth] LOGOUT: starting...');
+    console.log('[Auth] Logout started');
     setIsLoading(true);
-    
-    // Clear everything immediately
     setUser(null);
-    userCacheRef.current = null;
-    hasCheckedRef.current = false;
-    isSessionLockedRef.current = false;
 
     try {
-      const response = await fetch('/api/auth/logout', {
+      await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
-      console.log('[Auth] LOGOUT: API responded with', response.status);
+      console.log('[Auth] Logout successful');
     } catch (error) {
-      console.error('[Auth] LOGOUT: API error:', error);
+      console.error('[Auth] Logout error:', error);
     } finally {
       setIsLoading(false);
-      console.log('[Auth] LOGOUT: complete, redirecting to login');
       router.push('/auth/login');
     }
   }, [router]);
 
   const updateUser = useCallback((updates: Partial<User>) => {
-    setUser(prev => {
-      if (!prev) return null;
-      const updated = { ...prev, ...updates };
-      userCacheRef.current = updated; // Keep cache in sync
-      return updated;
-    });
+    setUser(prev => (prev ? { ...prev, ...updates } : null));
   }, []);
-
-  // Auto-refresh token when it gets close to expiration
-  useEffect(() => {
-    if (!user) return; // No user, nothing to refresh
-    
-    console.log('[Auth] Setting up auto-refresh (tokens expire after 1 hour)');
-    
-    // Check token status every 50 minutes
-    const refreshInterval = setInterval(async () => {
-      console.log('[Auth] Auto-refresh check...');
-      try {
-        const response = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          console.log('[Auth] ✓ Token auto-refreshed');
-        } else {
-          console.log('[Auth] ✗ Auto-refresh failed:', response.status);
-        }
-      } catch (error) {
-        console.error('[Auth] Auto-refresh error:', error);
-      }
-    }, 50 * 60 * 1000); // Every 50 minutes
-    
-    return () => clearInterval(refreshInterval);
-  }, [user]);
-
-  // Periodic session validation - verify user is still logged in server-side
-  useEffect(() => {
-    if (!user) return; // No user, skip validation
-    
-    console.log('[Auth] Setting up session validation (every 15 minutes)');
-    
-    const validationInterval = setInterval(async () => {
-      console.log('[Auth] Validating session with server...');
-      try {
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
-          credentials: 'include',
-          cache: 'no-store',
-        });
-        
-        if (!response.ok) {
-          console.error('[Auth] ✗ Session validation failed - user logged out server-side');
-          // User was logged out on server, clear local state
-          setUser(null);
-          userCacheRef.current = null;
-          hasCheckedRef.current = false;
-          isSessionLockedRef.current = false;
-          return;
-        }
-        
-        const data = await response.json();
-        console.log('[Auth] ✓ Session still valid for user:', data.user?.id);
-      } catch (error) {
-        console.error('[Auth] Session validation error:', error);
-      }
-    }, 15 * 60 * 1000); // Every 15 minutes
-    
-    return () => clearInterval(validationInterval);
-  }, [user]);
 
   const value: AuthContextType = {
     user,
@@ -247,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateUser,
   };
 
-  console.log('[Auth] Current state: user=', user?.id || 'null', 'isLoading=', isLoading, 'isAuthenticated=', !!user);
+  console.log('[Auth] Current state: user=', user?.id || 'null', 'loading=', isLoading);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
