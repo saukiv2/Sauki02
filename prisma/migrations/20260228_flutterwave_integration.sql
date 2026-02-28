@@ -25,7 +25,8 @@ WHERE "firstName" IS NULL;
 -- ALTER TABLE "User" ALTER COLUMN "firstName" SET NOT NULL;
 -- ALTER TABLE "User" ALTER COLUMN "lastName" SET NOT NULL;
 
--- 3. Add columns to Wallet table for Flutterwave details
+-- Make fullName nullable since we're moving to firstName/lastName
+ALTER TABLE "User" ALTER COLUMN "fullName" DROP NOT NULL;
 ALTER TABLE "Wallet" ADD COLUMN IF NOT EXISTS "flwTxRef" TEXT;
 ALTER TABLE "Wallet" ADD COLUMN IF NOT EXISTS "flwRef" TEXT;
 ALTER TABLE "Wallet" ADD COLUMN IF NOT EXISTS "flwCreatedAt" TIMESTAMP(3);
