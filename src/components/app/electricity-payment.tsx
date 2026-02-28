@@ -26,6 +26,8 @@ export const ElectricityPaymentComponent = () => {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [token, setToken] = useState('');
+  const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const { get, post } = useApi();
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export const ElectricityPaymentComponent = () => {
   };
 
   const handlePay = async () => {
-    if (!selectedDisco || !meterNo || !amount) return;
+    if (!selectedDisco || !meterNo || !amount || pin.length !== 6) return;
 
     setLoading(true);
     try {
@@ -75,11 +77,13 @@ export const ElectricityPaymentComponent = () => {
         meterNo,
         amountNaira: parseFloat(amount),
         customerCode: customerData?.outstandingBalance,
+        pin,
       });
 
       if ((response as any)?.success) {
         setToken((response as any)?.token || '');
         setShowConfirm(false);
+        setPin('');
         // Show success message
       }
     } finally {
@@ -209,6 +213,31 @@ export const ElectricityPaymentComponent = () => {
               <span className="font-bold">{selectedDisco}</span> for meter{' '}
               <span className="font-bold">{meterNo}</span>?
             </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Enter 6‑digit PIN
+            </label>
+            <div className="relative">
+              <input
+                type={showPin ? 'text' : 'password'}
+                value={pin}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setPin(v);
+                }}
+                placeholder="000000"
+                maxLength={6}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPin ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
           <div className="flex gap-4">
             <Button

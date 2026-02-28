@@ -66,6 +66,16 @@ export async function POST(request: NextRequest) {
 
     const amountKobo = Math.round(amountNaira * 100);
 
+    // verify transaction PIN
+    const { verifyPassword } = await import('@/lib/auth');
+    if (!body.pin || !/^\d{6}$/.test(body.pin)) {
+      return NextResponse.json({ message: 'PIN required' }, { status: 400 });
+    }
+    const pinMatch = await verifyPassword(body.pin, user.passwordHash);
+    if (!pinMatch) {
+      return NextResponse.json({ message: 'Invalid PIN' }, { status: 401 });
+    }
+
     // Check wallet balance
     if (user.wallet.balanceKobo < amountKobo) {
       return NextResponse.json(

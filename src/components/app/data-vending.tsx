@@ -25,23 +25,27 @@ interface PurchaseModalProps {
 
 const PurchaseModal = ({ plan, isOpen, onClose, onSuccess }: PurchaseModalProps) => {
   const [phone, setPhone] = useState('');
+  const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const { post } = useApi();
 
   const handlePurchase = async () => {
-    if (!phone || !plan) return;
+    if (!phone || !plan || pin.length !== 6) return;
 
     setLoading(true);
     try {
       const response = await post('/api/data/purchase', {
         planId: plan.id,
         phoneNumber: phone,
+        pin,
       });
 
       if ((response as any)?.success) {
         onSuccess();
         onClose();
         setPhone('');
+        setPin('');
       }
     } finally {
       setLoading(false);
@@ -70,6 +74,31 @@ const PurchaseModal = ({ plan, isOpen, onClose, onSuccess }: PurchaseModalProps)
                 placeholder="09012345678"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                6‑Digit PIN
+              </label>
+              <div className="relative">
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  value={pin}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setPin(v);
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="000000"
+                  maxLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPin ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
 
             <Button
