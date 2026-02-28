@@ -175,6 +175,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Auto-refresh token when it gets close to expiration
+  useEffect(() => {
+    if (!user) return; // No user, nothing to refresh
+    
+    console.log('[Auth] Setting up auto-refresh (tokens expire after 1 hour)');
+    
+    // Check token status every 50 minutes
+    const refreshInterval = setInterval(async () => {
+      console.log('[Auth] Auto-refresh check...');
+      try {
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          console.log('[Auth] ✓ Token auto-refreshed');
+        } else {
+          console.log('[Auth] ✗ Auto-refresh failed:', response.status);
+        }
+      } catch (error) {
+        console.error('[Auth] Auto-refresh error:', error);
+      }
+    }, 50 * 60 * 1000); // Every 50 minutes
+    
+    return () => clearInterval(refreshInterval);
+  }, [user]);
+
   const value: AuthContextType = {
     user,
     isLoading,

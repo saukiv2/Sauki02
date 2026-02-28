@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser, useAuthMethods } from '@/hooks/use-auth';
@@ -25,27 +25,42 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { logout } = useAuthMethods();
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Track if we've already decided to redirect (prevent multiple redirects)
+  const hasRedirectedRef = useRef(false);
+
   // Only redirect if not authenticated AFTER loading is complete
   useEffect(() => {
-    console.log('[AppLayout] useEffect triggered: isLoading=', isLoading, 'isAuthenticated=', isAuthenticated);
+    console.log('[AppLayout] State check: isLoading=', isLoading, 'isAuth=', isAuthenticated, 'user=', user?.id || 'null');
 
-    // While still loading, show spinner
+    // Still loading - don't do anything
     if (isLoading) {
-      console.log('[AppLayout] Still loading, showing spinner');
+      console.log('[AppLayout] ⏳ Still loading, waiting...');
+      hasRedirectedRef.current = false; // Reset redirect flag while loading
       return;
     }
 
-    // If authenticated, show content
+    // Loading complete
+    console.log('[AppLayout] ✓ Loading complete. isAuthenticated=', isAuthenticated);
+
+    // If authenticated, we're good
     if (isAuthenticated) {
       console.log('[AppLayout] ✓ User authenticated as:', user?.id);
+      hasRedirectedRef.current = false;
       return;
     }
 
-    // Not authenticated after loading completed - redirect
-    console.log('[AppLayout] ✗ Not authenticated, redirecting to login');
-    router.push('/auth/login');
+    // Not authenticated after loading completed - redirect ONCE
+    if (!hasRedirectedRef.current) {
+      console.log('[AppLayout] ✗ Not authenticated, redirecting to login (ONCE)');
+      hasRedirectedRef.current = true;
+      router.push('/auth/login');
+      return;
+    }
+
+    console.log('[AppLayout] Already redirected, skipping duplicate redirect');
   }, [isLoading, isAuthenticated, router, user?.id]);
 
+  // While loading OR not authenticated (initial state), show spinner
   if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
