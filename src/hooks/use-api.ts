@@ -27,10 +27,12 @@ export function useApi() {
       setError(null);
 
       try {
+        console.log(`[API] ${method.toUpperCase()} ${url}`);
         const response = await axios[method]<T>(url, data, {
           ...config,
           withCredentials: true, // Include HTTP-only cookies automatically
         });
+        console.log(`[API] ✓ ${method.toUpperCase()} ${url} => ${response.status}`);
         return response.data;
       } catch (err) {
         const axiosError = err as AxiosError<ApiError>;
@@ -38,8 +40,11 @@ export function useApi() {
           message: axiosError.message,
         };
 
-        // Handle 401 - cookies expired/invalid
+        console.error(`[API] ✗ ${method.toUpperCase()} ${url} => ${axiosError.response?.status}`, errorData);
+
+        // Handle 401 - cookies expired/invalid, redirect to login
         if (axiosError.response?.status === 401 && typeof window !== 'undefined') {
+          console.error('[API] Received 401 - redirecting to login');
           window.location.href = '/auth/login';
         }
 

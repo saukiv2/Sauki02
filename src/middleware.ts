@@ -10,10 +10,13 @@ interface TokenPayload {
 function verifyAuth(token: string): TokenPayload | null {
   try {
     const secret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+    console.log('[Middleware] Using JWT_SECRET:', secret ? '**SET**' : '**NOT SET - USING FALLBACK**');
     const payload = jwt.verify(token, secret) as TokenPayload;
+    console.log('[Middleware] ✓ Token verified successfully');
     return payload;
-  } catch (error) {
-    console.error('[Middleware] Token verification failed');
+  } catch (error: any) {
+    console.error('[Middleware] ✗ Token verification failed:', error.message);
+    console.log('[Middleware] Token (first 50 chars):', token.substring(0, 50) + '...');
     return null;
   }
 }
