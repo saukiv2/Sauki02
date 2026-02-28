@@ -7,14 +7,22 @@ export const fetchCache = 'force-no-store';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, password } = body;
+    const { phone, pin } = body;
 
     console.log('[Login] Attempting login with phone:', phone);
 
     // Validate input
-    if (!phone || !password) {
+    if (!phone || !pin) {
       return NextResponse.json(
-        { message: 'Phone and password required' },
+        { message: 'Phone and PIN required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate PIN is 6 digits
+    if (!/^\d{6}$/.test(pin)) {
+      return NextResponse.json(
+        { message: 'PIN must be exactly 6 digits' },
         { status: 400 }
       );
     }
@@ -22,7 +30,6 @@ export async function POST(request: NextRequest) {
     // Import database and auth utilities
     const { prisma } = await import('@/lib/db');
     const { verifyPassword } = await import('@/lib/auth');
-    const { randomBytes } = await import('crypto');
 
     // Find user by phone
     const user = await prisma.user.findUnique({
@@ -35,10 +42,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Verify password
-    const passwordMatch = await verifyPassword(password, user.passwordHash);
-    if (!passwordMatch) {
-      console.log('[Login] Password mismatch for user:', user.id);
+    // Verify PIN
+    const pinMatch = await verifyPassword(pin, user.passwordHash);
+    if (!pinMatch) {
+      console.log('[Login] PIN mismatch for user:', user.id);
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
@@ -46,8 +53,6 @@ export async function POST(request: NextRequest) {
       console.log('[Login] User suspended:', user.id);
       return NextResponse.json({ message: 'Account suspended' }, { status: 403 });
     }
-
-    console.log('[Login] ✓ Credentials verified, creating session');
 
     console.log('[Login] ✓ Credentials verified, creating auth cookie');
 
@@ -59,11 +64,18 @@ export async function POST(request: NextRequest) {
       message: 'Login successful',
       user: {
         id: user.id,
-        fullName: user.fullName,
-        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         phone: user.phone,
         role: user.role,
       },
+      wallet: user.wallet
+        ? {
+            accountNumber: user.wallet.flwAccountNumber,
+            bankName: user.wallet.flwBankName,
+            balance: user.wallet.balanceKobo / 100,
+          }
+        : null,
     });
 
     // Set simple auth cookie

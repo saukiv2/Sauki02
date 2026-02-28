@@ -3,10 +3,11 @@ export type UserRole = 'user' | 'admin' | 'ADMIN' | 'CUSTOMER' | 'AGENT';
 export interface User {
   id: string;
   email: string;
-  phone?: string;
-  fullName: string;
-  firstName?: string;
-  lastName?: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
+  fullName?: string; // Computed as firstName + lastName
+  pin?: string; // 6-digit PIN for transactions
   role: UserRole;
   isVerified?: boolean;
   isSuspended?: boolean;

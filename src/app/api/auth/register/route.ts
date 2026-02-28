@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createStaticVirtualAccount } from '@/lib/flutterwave';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -7,146 +8,164 @@ export const fetchCache = 'force-no-store';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { firstName, lastName, email, phone, password, bvn } = body;
+    const { firstName, lastName, phone, pin, bvn } = body;
 
-    console.log('[Auth/Register] Starting registration for:', email, phone);
+    console.log('[Register] Signup attempt - phone:', phone);
 
-    if (!firstName || !lastName || !email || !phone || !password || !bvn) {
-      console.log('[Auth/Register] Missing required fields');
-      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Validate BVN is 11 digits
-    if (bvn.length !== 11 || !/^\d+$/.test(bvn)) {
-      console.log('[Auth/Register] Invalid BVN format');
-      return NextResponse.json({ message: 'BVN must be 11 digits' }, { status: 400 });
-    }
-
-    // Lazy load all dependencies to avoid build-time issues
-    const { hashPassword, generateAccessToken, generateRefreshToken, hashToken } = await import('@/lib/auth');
-    const { prisma } = await import('@/lib/db');
-    const axios = await import('axios').then(m => m.default);
-    const { v4: uuidv4 } = await import('uuid');
-
-    const FLW_SECRET_KEY = process.env.FLW_SECRET_KEY || '';
-    const FLW_BASE_URL = 'https://api.flutterwave.com/v3';
-
-    const existingUser = await prisma.user.findFirst({
-      where: { OR: [{ email }, { phone }] },
-    });
-
-    if (existingUser) {
-      console.log('[Auth/Register] User already exists');
-      return NextResponse.json({ message: 'User already exists' }, { status: 400 });
-    }
-
-    // Create virtual account with BVN
-    const vaReference = `SM-VA-${uuidv4()}`;
-    let flwAccountNumber: string, flwBankName: string, flwOrderRef: string;
-
-    try {
-      const vaResponse = await axios.post(`${FLW_BASE_URL}/virtual-account-numbers`, {
-        email,
-        tx_ref: vaReference,
-        phonenumber: phone,
-        firstname: firstName,
-        lastname: lastName,
-        narration: `SaukiMart Wallet - ${firstName} ${lastName}`,
-        is_permanent: true,
-        bvn,
-      }, {
-        headers: { Authorization: `Bearer ${FLW_SECRET_KEY}`, 'Content-Type': 'application/json' },
-      });
-
-      if (vaResponse.data.status !== 'success') {
-        return NextResponse.json(
-          { message: 'Failed to create virtual account', details: vaResponse.data.message },
-          { status: 400 }
-        );
-      }
-
-      flwAccountNumber = vaResponse.data.data.account_number;
-      flwBankName = vaResponse.data.data.bank_name;
-      flwOrderRef = vaResponse.data.data.order_ref;
-    } catch (error: any) {
-      console.error('VA error:', error.response?.data || error.message);
+    // Validate input
+    if (!firstName || !lastName || !phone || !pin || !bvn) {
       return NextResponse.json(
-        { message: 'Failed to create virtual account', details: error.response?.data?.message || error.message },
+        { message: 'All fields required: firstName, lastName, phone, pin, bvn' },
         { status: 400 }
       );
     }
 
-    // Create user and wallet
-    const passwordHash = await hashPassword(password);
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          fullName: `${firstName} ${lastName}`,
-          email,
-          phone,
-          passwordHash,
-          role: 'CUSTOMER',
-          isVerified: true,
-          isSuspended: false,
-          agentApplicationPending: false,
-        },
-      });
-      const wallet = await tx.wallet.create({
-        data: {
-          userId: user.id,
-          balanceKobo: 0,
-          currency: 'NGN',
-          flwAccountNumber,
-          flwBankName,
-          flwOrderRef,
-        },
-      });
-      return { user, wallet };
+    // Validate PIN is 6 digits
+    if (!/^\d{6}$/.test(pin)) {
+      return NextResponse.json(
+        { message: 'PIN must be exactly 6 digits' },
+        { status: 400 }
+      );
+    }
+
+    // Validate BVN is 11 digits
+    if (!/^\d{11}$/.test(bvn)) {
+      return NextResponse.json(
+        { message: 'BVN must be exactly 11 digits' },
+        { status: 400 }
+      );
+    }
+
+    // Validate phone format (basic)
+    if (!/^\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
+      return NextResponse.json(
+        { message: 'Invalid phone number format' },
+        { status: 400 }
+      );
+    }
+
+    console.log('[Register] ✓ Input validation passed');
+
+    // Import dependencies
+    const { prisma } = await import('@/lib/db');
+    const { hashPassword } = await import('@/lib/auth');
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { phone },
     });
 
-    const accessToken = generateAccessToken({ userId: result.user.id, email, role: 'CUSTOMER' });
-    const refreshTokenFinal = generateRefreshToken({ userId: result.user.id, email, role: 'CUSTOMER' });
-    const refreshTokenHash = hashToken(refreshTokenFinal);
+    if (existingUser) {
+      console.log('[Register] User already exists:', phone);
+      return NextResponse.json(
+        { message: 'Phone number already registered' },
+        { status: 409 }
+      );
+    }
 
-    await prisma.session.create({
+    console.log('[Register] ✓ User does not exist, creating Flutterwave account...');
+
+    // Create Flutterwave static virtual account
+    // Note: BVN is NEVER stored - only used to create the account
+    const flwResponse = await createStaticVirtualAccount({
+      email: `accounts@saukimart.online`, // Generic email
+      phone,
+      firstName,
+      lastName,
+      bvn, // WARNING: This is only for account creation, we don't store BVN
+      userId: `signup-${Date.now()}`, // Temporary ID for tx_ref uniqueness
+    });
+
+    if (!flwResponse) {
+      console.error('[Register] Failed to create Flutterwave account');
+      return NextResponse.json(
+        { message: 'Failed to create virtual account. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    console.log('[Register] ✓ Flutterwave account created:', {
+      accountNumber: flwResponse.accountNumber,
+      bankName: flwResponse.bankName,
+    });
+
+    // Hash the PIN
+    const pinHash = await hashPassword(pin);
+
+    // Create user in database
+    const newUser = await prisma.user.create({
       data: {
-        userId: result.user.id,
-        tokenHash: refreshTokenHash,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        firstName,
+        lastName,
+        email: `accounts@saukimart.online`, // Generic email
+        phone,
+        passwordHash: pinHash, // Store PIN hash
+        pin, // Also store PIN for reference (TODO: consider removing in production)
+        // BVN is NOT stored as per user requirement
+        role: 'CUSTOMER',
+        isVerified: false,
       },
     });
 
+    console.log('[Register] ✓ User created:', newUser.id);
+
+    // Create wallet with Flutterwave account details
+    const wallet = await prisma.wallet.create({
+      data: {
+        userId: newUser.id,
+        balanceKobo: 0,
+        currency: 'NGN',
+        flwAccountNumber: flwResponse.accountNumber,
+        flwBankName: flwResponse.bankName,
+        flwOrderRef: flwResponse.orderRef,
+        flwTxRef: flwResponse.txRef,
+        flwRef: flwResponse.flwRef,
+        flwCreatedAt: new Date(),
+      },
+    });
+
+    console.log('[Register] ✓ Wallet created with Flutterwave account');
+
+    // Create auth cookie and log user in automatically
+    const authData = Buffer.from(
+      JSON.stringify({ userId: newUser.id, loginTime: Date.now() })
+    ).toString('base64');
+
+    // Return success response
     const response = NextResponse.json(
       {
-        message: 'Registration successful',
-        user: { id: result.user.id, firstName, lastName, email, phone, role: 'CUSTOMER' },
-        wallet: { balanceKobo: 0, flwAccountNumber, flwBankName },
+        message: 'Registration successful!',
+        user: {
+          id: newUser.id,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          phone: newUser.phone,
+          role: newUser.role,
+        },
+        wallet: {
+          accountNumber: wallet.flwAccountNumber,
+          bankName: wallet.flwBankName,
+        },
       },
       { status: 201 }
     );
 
-    // Set access token (short-lived, 1 hour)
-    response.cookies.set('sm_access', accessToken, {
+    // Set auth cookie
+    response.cookies.set('auth', authData, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60,
+      maxAge: 30 * 24 * 60 * 60, // 30 days
       path: '/',
     });
 
-    // Set refresh token (long-lived, 30 days)
-    response.cookies.set('sm_refresh', refreshTokenFinal, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60,
-      path: '/',
-    });
-
-    console.log('[Auth/Register] ✓ Registration successful, cookies set for user:', result.user.id);
+    console.log('[Register] ✓ Signup successful for user:', newUser.id);
     return response;
   } catch (error) {
-    console.error('[Auth/Register] ✗ Error:', error);
-    return NextResponse.json({ message: 'Server error' }, { status: 500 });
+    console.error('[Register] Error:', error);
+    return NextResponse.json(
+      { message: 'Signup failed. Please try again.' },
+      { status: 500 }
+    );
   }
 }

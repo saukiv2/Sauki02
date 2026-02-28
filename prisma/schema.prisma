@@ -58,15 +58,17 @@ enum OrderStatus {
 
 model User {
   id                        String @id @default(cuid())
-  fullName                  String
-  email                     String @unique
+  firstName                 String
+  lastName                  String
+  email                     String @unique // Auto-generated or generic
   phone                     String @unique
   passwordHash              String
+  pin                       String? // 6-digit PIN for transactions
+  bvn                       String? // Temporary - only for initial Flutterwave account creation
   role                      Role @default(CUSTOMER)
   isVerified                Boolean @default(false)
   isSuspended               Boolean @default(false)
   agentApplicationPending   Boolean @default(false)
-  flwIdentityRef            String?
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
@@ -104,9 +106,13 @@ model Wallet {
   userId            String @unique
   balanceKobo       Int @default(0)
   currency          String @default("NGN")
-  flwAccountNumber  String?
-  flwBankName       String?
-  flwOrderRef       String?
+  // Flutterwave virtual account details
+  flwAccountNumber  String?       // Virtual account number
+  flwBankName       String?       // Bank name (usually WEMA BANK)
+  flwOrderRef       String? @unique // order_ref from Flutterwave (permanent ID)
+  flwTxRef          String? @unique // tx_ref sent to Flutterwave (must be unique per customer)
+  flwRef            String?       // Response flw_ref from Flutterwave
+  flwCreatedAt      DateTime?     // When Flutterwave account was created
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -118,6 +124,8 @@ model Wallet {
   flutterwaveDeposits FlutterwaveDeposit[]
 
   @@index([userId])
+  @@index([flwOrderRef])
+  @@index([flwTxRef])
 }
 
 model WalletTransaction {
@@ -391,4 +399,25 @@ model AuditLog {
   @@index([adminId])
   @@index([createdAt])
   @@index([targetType])
+}
+
+model FlutterwaveWebhookLog {
+  id                String @id @default(cuid())
+  txRef             String @unique // tx_ref from webhook (for mapping to user)
+  flwRef            String?        // flw_ref from webhook
+  userId            String?        // Matched user ID
+  walletId          String?        // Matched wallet ID
+  amount            Int
+  status            String         // e.g., "successful", "failed"
+  eventType         String         // e.g., "charge.completed"
+  rawPayload        Json           // Full webhook payload for debugging
+  processed         Boolean @default(false)
+  processedAt       DateTime?
+  createdAt         DateTime @default(now())
+
+  @@index([txRef])
+  @@index([userId])
+  @@index([walletId])
+  @@index([status])
+  @@index([processed])
 }
