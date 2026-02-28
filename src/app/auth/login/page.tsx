@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/auth-context';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -35,27 +35,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Call login API
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          phone: phone.replace(/\D/g, ''),
-          pin,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-
-      console.log('[Login] Success, redirecting to dashboard');
-      
-      // Redirect will be handled by auth context
-      router.push('/dashboard');
+      // Use auth context method, which sets user and redirects
+      await login(phone.replace(/\D/g, ''), pin);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);

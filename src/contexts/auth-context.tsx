@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, pin: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: Partial<User>) => void;
 }
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (phone: string, password: string) => {
+    async (phone: string, pin: string) => {
       console.log('[Auth] Login started with phone:', phone);
       setIsLoading(true);
 
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ phone, password }),
+          body: JSON.stringify({ phone, pin }),
         });
 
         if (!response.ok) {
