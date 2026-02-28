@@ -26,30 +26,30 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const redirectedRef = useRef(false);
 
+  // Only check auth when LOADING state changes, not on every render
   useEffect(() => {
-    console.log('[AppLayout] State: loading=', isLoading, 'authenticated=', isAuthenticated);
+    console.log('[AppLayout] Auth state changed: loading=', isLoading, 'authenticated=', isAuthenticated, 'user=', user?.id);
 
-    // Still loading
+    // If still loading, nothing to do yet
     if (isLoading) {
-      console.log('[AppLayout] Still loading');
+      console.log('[AppLayout] Still loading, waiting...');
+      return;
+    }
+
+    // If authenticated, all good
+    if (isAuthenticated && user) {
+      console.log('[AppLayout] ✓ User authenticated:', user.id);
       redirectedRef.current = false;
       return;
     }
 
-    // Authenticated, good
-    if (isAuthenticated) {
-      console.log('[AppLayout] User authenticated:', user?.id);
-      redirectedRef.current = false;
-      return;
-    }
-
-    // Not authenticated, redirect once
+    // Not authenticated - redirect to login ONCE
     if (!redirectedRef.current) {
-      console.log('[AppLayout] Not authenticated, redirecting to login');
+      console.log('[AppLayout] ✗ Not authenticated, redirecting to login');
       redirectedRef.current = true;
       router.push('/auth/login');
     }
-  }, [isLoading, isAuthenticated, router, user?.id]);
+  }, [isLoading, router]);
 
   if (isLoading || !isAuthenticated) {
     return (

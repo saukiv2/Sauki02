@@ -90,5 +90,15 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*'],
+  matcher: [
+    '/api/admin/:path*',
+    '/api/wallet/:path*',
+    '/api/cart/:path*',
+    '/api/orders/:path*',
+    '/api/data/purchase/:path*',
+    '/api/electricity/pay/:path*',
+    '/api/notifications/:path*',
+    '/api/users/:path*',
+    '/api/categories/:path*',
+  ],
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types';
 
@@ -19,42 +19,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userCheckInitiatedRef = useRef(false);
 
-  // Restore session on app mount
-  const restoreSession = useCallback(async () => {
-    console.log('[Auth] Attempting to restore session from /api/auth/me');
-    try {
-      const response = await fetch('/api/auth/me', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[Auth] ✓ Session restored, user:', data.user?.id);
-        setUser(data.user);
-      } else {
-        console.log('[Auth] ✗ Session restore failed with status:', response.status);
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('[Auth] Session restore error:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Restore session on mount only, once
+  // On app cold start (page reload), verify user still has valid session
   useEffect(() => {
-    console.log('[Auth] Provider mounted, restoring session');
-    restoreSession();
+    // Only run once on provider mount
+    if (userCheckInitiatedRef.current) return;
+    userCheckInitiatedRef.current = true;
+
+    const checkUserSession = async () => {
+      console.log('[Auth] Cold start: checking if user has valid session cookie');
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Auth] ✓ Valid session found, user:', data.user?.id);
+          setUser(data.user);
+        } else {
+          console.log('[Auth] ✗ No valid session (status:', response.status + ')');
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('[Auth] Error checking session:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = useCallback(
     async (phone: string, password: string) => {
-      console.log('[Auth] Login attempt with phone:', phone);
+      console.log('[Auth] Login started with phone:', phone);
       setIsLoading(true);
 
       try {
@@ -72,14 +75,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const data = await response.json();
         console.log('[Auth] ✓ Login successful, user:', data.user?.id);
+        
+        // Set user immediately - this is the source of truth for this session
         setUser(data.user);
-        setIsLoading(false);
-
-        // Wait a moment for state to sync
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        console.log('[Auth] Redirecting to dashboard');
+        console.log('[Auth] User state updated, redirecting now...');
+        
+        // Redirect immediately - the cookie is already set by the API
         router.push(data.user?.role === 'ADMIN' ? '/admin' : '/dashboard');
+        setIsLoading(false);
       } catch (error) {
         console.error('[Auth] Login error:', error);
         setIsLoading(false);

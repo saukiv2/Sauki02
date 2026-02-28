@@ -42,11 +42,8 @@ export function useApi() {
 
         console.error(`[API] ✗ ${method.toUpperCase()} ${url} => ${axiosError.response?.status}`, errorData);
 
-        // Handle 401 - cookies expired/invalid, redirect to login
-        if (axiosError.response?.status === 401 && typeof window !== 'undefined') {
-          console.error('[API] Received 401 - redirecting to login');
-          window.location.href = '/auth/login';
-        }
+        // Don't do hard redirects on 401 - let components or middleware handle it
+        // If session is truly invalid, the next page load will check /api/auth/me and redirect
 
         setError(errorData);
         return null;
