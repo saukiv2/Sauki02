@@ -21,12 +21,16 @@ export function WalletCard() {
       try {
         console.log('[WalletCard] Fetching wallet balance');
         const response = await get('/api/wallet/balance');
-        if ((response as any)?.success) {
-          console.log('[WalletCard] ✓ Wallet loaded');
-          setWallet((response as any)?.data);
-        } else if ((response as any)?.data) {
-          // Some endpoints return data directly, not wrapped in success
-          setWallet((response as any)?.data);
+        // our endpoint returns the wallet object directly
+        if (response) {
+          console.log('[WalletCard] ✓ Wallet loaded', response);
+          // normalize shape: convert balanceKobo -> balance
+          const payload = response as any;
+          setWallet({
+            balance: payload.balanceKobo ?? payload.balance ?? 0,
+            flwAccountNumber: payload.flwAccountNumber,
+            flwBankName: payload.flwBankName,
+          });
         }
       } catch (err) {
         console.error('[WalletCard] Error:', err);
