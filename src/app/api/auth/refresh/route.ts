@@ -43,8 +43,7 @@ export async function POST(request: NextRequest) {
       message: 'Token refreshed',
       user: {
         id: user.id,
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
+        fullName: user.fullName,
         email: user.email,
         phone: user.phone,
         role: user.role,
